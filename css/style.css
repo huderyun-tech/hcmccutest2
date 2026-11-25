@@ -1,0 +1,579 @@
+/* ==========================================================================
+   新竹市月子照顧服務人員職業工會 — 全站樣式
+   目錄：1.變數  2.基本  3.導覽列  4.頁面切換  5.首頁  6.最新消息  7.內頁容器
+         8.表單卡片  9.測驗  10.彈窗  11.RWD／列印  12.頁尾
+   ========================================================================== */
+
+/* 1. 設計變數 ------------------------------------------------------------ */
+:root {
+  --brand:        #d96b43;
+  --brand-dark:   #bf5630;
+  --brand-tint:   #fff8f5;
+  --brand-soft:   #fbe3d7;
+  --brand-softer: #fffcfb;
+  --text:         #333;
+  --text-muted:   #4a5568;
+  --text-faint:   #718096;
+  --text-light:   #a0aec0;
+  --heading:      #2d3748;
+  --border:       #e2e8f0;
+  --page-bg:      #fcf8f6;
+  --blue:         #2b6cb0;
+}
+
+/* 2. 基本 ---------------------------------------------------------------- */
+body {
+  font-family: "Helvetica Neue", Arial, "Noto Sans TC", sans-serif;
+  margin: 0;
+  padding: 0;
+  color: var(--text);
+  background-color: var(--page-bg);
+}
+
+/* 3. 導覽列 -------------------------------------------------------------- */
+header {
+  background-color: #fff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  position: fixed;
+  width: 100%;
+  top: 0;
+  z-index: 9999;
+}
+
+.nav-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 20px;
+  height: 70px;
+}
+
+.logo {
+  font-size: 18px;
+  font-weight: bold;
+  color: var(--brand);
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.logo img { height: 38px; width: auto; object-fit: contain; }
+
+.nav-links { list-style: none; display: flex; margin: 0; padding: 0; }
+.nav-links > li { position: relative; }
+.nav-links a {
+  text-decoration: none;
+  color: var(--text-muted);
+  font-weight: 500;
+  padding: 24px 14px;
+  display: block;
+  transition: all 0.3s;
+  white-space: nowrap;
+  cursor: pointer;
+  font-size: 15px;
+}
+.nav-links a:hover,
+.nav-links a.active { color: var(--brand); background-color: var(--brand-tint); }
+
+.dropdown-menu {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  background-color: #fff;
+  width: 210px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  border-radius: 0 0 6px 6px;
+  list-style: none;
+  padding: 8px 0;
+  margin: 0;
+  border-top: 3px solid var(--brand);
+  z-index: 10000;
+}
+.dropdown-menu a {
+  padding: 10px 14px;
+  color: var(--text-muted);
+  font-size: 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  white-space: normal;
+}
+.dropdown-menu a:hover { background-color: var(--brand-soft); color: var(--brand-dark); }
+
+.dropdown-submenu { position: relative; }
+.dropdown-submenu .submenu {
+  display: none;
+  position: absolute;
+  top: 0;
+  left: 100%;
+  background-color: #fff;
+  width: 160px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  border-radius: 4px;
+  list-style: none;
+  padding: 8px 0;
+  margin: 0;
+  border-left: 3px solid var(--brand);
+  z-index: 10001;
+}
+
+.nav-links li:hover > .dropdown-menu,
+.dropdown-submenu:hover > .submenu { display: block; }
+
+.arrow-down::after  { content: " ▾"; font-size: 12px; }
+.arrow-right::after { content: " ▸"; font-size: 12px; color: var(--text-light); }
+
+/* 4. 單頁切換（無刷新路由） --------------------------------------------- */
+.page-section { display: none; }
+.page-section.active { display: block; }
+
+/* 5. 首頁 Hero ----------------------------------------------------------- */
+.hero {
+  background: linear-gradient(135deg, #fceae2 0%, var(--brand-soft) 100%);
+  padding: 150px 20px 80px 20px;
+  text-align: center;
+}
+.hero h1 { font-size: 32px; color: var(--heading); margin-bottom: 20px; }
+.hero p {
+  font-size: 16px;
+  color: var(--text-muted);
+  max-width: 700px;
+  margin: 0 auto 30px auto;
+  line-height: 1.6;
+  min-height: 60px;
+  opacity: 1;
+  transition: opacity 0.6s ease-in-out;
+}
+
+.btn-join {
+  background-color: var(--brand);
+  color: #fff;
+  padding: 12px 30px;
+  text-decoration: none;
+  border-radius: 25px;
+  font-weight: bold;
+  box-shadow: 0 4px 6px rgba(217, 107, 67, 0.2);
+  transition: background 0.3s;
+  display: inline-block;
+  cursor: pointer;
+}
+.btn-join:hover { background-color: var(--brand-dark); }
+
+.main-content { max-width: 1200px; margin: 40px auto; padding: 0 20px; }
+.section-title {
+  text-align: center;
+  font-size: 26px;
+  color: var(--heading);
+  margin-bottom: 30px;
+  position: relative;
+}
+.section-title::after {
+  content: "";
+  display: block;
+  width: 50px;
+  height: 3px;
+  background-color: var(--brand);
+  margin: 10px auto 0 auto;
+}
+
+/* 6. 最新消息橫向卡片 ---------------------------------------------------- */
+.news-slider-container {
+  display: flex;
+  gap: 20px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  padding-bottom: 15px;
+  -webkit-overflow-scrolling: touch;
+}
+.news-slider-container::-webkit-scrollbar { height: 8px; }
+.news-slider-container::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+.news-slider-container::-webkit-scrollbar-thumb:hover { background: var(--brand); }
+
+.news-card-slide {
+  flex: 0 0 300px;
+  scroll-snap-align: start;
+  background: #fff;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+  border-top: 4px solid var(--brand);
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+.news-card-slide:hover { transform: translateY(-4px); box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1); }
+.news-card-slide img { width: 100%; height: 140px; object-fit: cover; border-radius: 6px; margin-bottom: 12px; }
+.news-card-date  { color: var(--text-light); font-size: 12px; }
+.news-card-title { font-size: 16px; margin: 5px 0; }
+.news-card-excerpt { color: var(--text-faint); font-size: 13px; line-height: 1.5; }
+.news-card-more  { color: var(--brand); font-size: 12px; font-weight: bold; margin-top: 15px; display: inline-block; }
+
+/* 7. 內頁容器 ------------------------------------------------------------ */
+.exam-page-container { max-width: 1000px; margin: 110px auto 50px auto; padding: 0 20px; }
+.exam-page-container--900 { max-width: 900px; }
+.exam-page-container--960 { max-width: 960px; }
+
+.exam-container {
+  background: #fff;
+  padding: 25px;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  margin-top: 20px;
+}
+.exam-container--lg     { padding: 30px; background: #fff; }
+.exam-container--orange { border-top: 4px solid var(--brand); }
+.exam-container--gray   { border-top: 4px solid var(--text-muted); }
+
+.pdf-download-box {
+  background: #fff5f0;
+  border: 2px dashed var(--brand);
+  padding: 20px;
+  border-radius: 8px;
+  text-align: center;
+  margin-bottom: 30px;
+}
+.pdf-download-btn {
+  background-color: var(--brand);
+  color: #fff;
+  padding: 10px 24px;
+  border-radius: 20px;
+  text-decoration: none;
+  font-weight: bold;
+  display: inline-block;
+  transition: background 0.3s;
+  cursor: pointer;
+}
+.pdf-download-btn:hover { background-color: var(--brand-dark); }
+
+/* 8. 表單卡片（取代原本重複的行內 style） ------------------------------- */
+.form-card {
+  border: 1px solid var(--brand-soft);
+  border-radius: 8px;
+  padding: 20px;
+  background: var(--brand-softer);
+}
+.form-card--plain  { border-color: var(--border); background: #fff; }
+.form-card--muted  { border-color: var(--border); background: #f8fafc; }
+.form-card--danger { border-color: #feb2b2; background: #fff5f5; }
+
+.form-card-title {
+  color: var(--brand);
+  font-size: 16px;
+  font-weight: bold;
+  border-bottom: 2px solid var(--brand-soft);
+  padding-bottom: 8px;
+  margin-top: 0;
+  margin-bottom: 15px;
+}
+.form-card-title--plain { border-bottom-color: var(--border); }
+.form-card-title--gray  { color: var(--text-muted); border-bottom-color: #cbd5e1; }
+.form-card-title--blue  { color: var(--blue); border-bottom-color: var(--border); }
+
+.note-text { margin: 0; color: var(--text-muted); font-size: 14px; line-height: 1.7; }
+.hint-text { color: var(--text-faint); font-size: 13px; margin-bottom: 10px; }
+
+/* 9. 徵選試題 ------------------------------------------------------------ */
+.quiz-card {
+  background: var(--page-bg);
+  border-left: 4px solid var(--brand);
+  padding: 15px 20px;
+  margin-bottom: 15px;
+  border-radius: 0 8px 8px 0;
+}
+.quiz-question { font-weight: bold; color: var(--heading); margin-bottom: 8px; font-size: 15px; }
+.quiz-options  { color: var(--text-muted); font-size: 14px; line-height: 1.6; }
+.quiz-answer-btn {
+  background: none;
+  border: 1px solid var(--brand);
+  color: var(--brand);
+  padding: 4px 12px;
+  border-radius: 12px;
+  cursor: pointer;
+  font-size: 13px;
+  margin-top: 8px;
+  font-weight: bold;
+}
+.quiz-answer-btn:hover { background: var(--brand); color: #fff; }
+.quiz-answer-text { display: none; color: var(--blue); font-weight: bold; margin-top: 8px; font-size: 14px; }
+
+/* 10. 最新消息彈窗 ------------------------------------------------------- */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  justify-content: center;
+  align-items: center;
+  z-index: 20000;
+}
+.modal-box {
+  background: #fff;
+  padding: 30px;
+  border-radius: 10px;
+  max-width: 550px;
+  width: 90%;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+  text-align: center;
+  position: relative;
+  border-top: 5px solid var(--brand);
+  max-height: 85vh;
+  overflow-y: auto;
+}
+.modal-close-btn {
+  background-color: var(--brand);
+  color: #fff;
+  border: none;
+  padding: 10px 25px;
+  border-radius: 20px;
+  font-size: 16px;
+  cursor: pointer;
+  font-weight: bold;
+}
+.modal-x {
+  position: absolute;
+  top: 15px;
+  right: 20px;
+  font-size: 20px;
+  color: var(--text-light);
+  cursor: pointer;
+  text-decoration: none;
+}
+.modal-date  { color: var(--text-light); font-size: 14px; text-align: left; margin-bottom: 5px; }
+.modal-title { text-align: left; color: var(--brand); margin-top: 0; }
+.modal-image-wrap { margin: 15px 0; display: none; }
+.modal-image { width: 100%; max-height: 300px; object-fit: cover; border-radius: 8px; }
+.modal-content-text { text-align: left; color: var(--text-muted); line-height: 1.6; }
+
+/* 11. 列印與響應式 ------------------------------------------------------- */
+@media print {
+  .no-print { display: none !important; }
+  .print-w-full { max-width: 100% !important; padding: 0 !important; }
+}
+
+@media (max-width: 900px) {
+  .nav-container { flex-direction: column; height: auto; padding: 10px; }
+  .logo { margin-bottom: 5px; font-size: 16px; }
+  .logo img { height: 32px; }
+  header { position: relative; }
+  .hero { padding-top: 40px; }
+  .exam-page-container { margin-top: 40px; }
+
+  /* --- 手機版導覽：點一下展開，選單佔滿螢幕寬度，子選單往下展開 --- */
+  .nav-links { flex-wrap: wrap; justify-content: center; }
+  .nav-links > li { position: static; }          /* 讓下拉選單以整個 header 為寬度基準 */
+  .nav-links a { padding: 11px 12px; font-size: 14px; }
+  .nav-links li.open > a { color: var(--brand); background-color: var(--brand-tint); }
+
+  /* 手機沒有真正的 hover（點一下會「黏住」），一律改用 .open 控制 */
+  .nav-links li:hover > .dropdown-menu,
+  .dropdown-submenu:hover > .submenu { display: none; }
+
+  .dropdown-menu {
+    left: 0;
+    right: 0;
+    width: auto;
+    max-height: 70vh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    border-radius: 0 0 8px 8px;
+  }
+  .dropdown-menu a { padding: 13px 18px; font-size: 15px; }
+
+  .dropdown-submenu .submenu {
+    position: static;
+    width: auto;
+    box-shadow: none;
+    border-radius: 0;
+    background-color: var(--brand-tint);
+    border-left: 3px solid var(--brand);
+    margin-left: 18px;
+    padding: 4px 0;
+  }
+  .dropdown-submenu .submenu a { font-size: 14px; }
+  .dropdown-submenu > a.arrow-right::after { content: " ▾"; }   /* 子選單改為往下展開，箭頭跟著改 */
+
+  .nav-links li.open > .dropdown-menu,
+  .dropdown-submenu.open > .submenu { display: block; }
+}
+
+/* 12. 頁尾 --------------------------------------------------------------- */
+footer {
+  background-color: var(--heading);
+  color: var(--text-light);
+  text-align: center;
+  padding: 40px 20px;
+  margin-top: 80px;
+}
+footer p { margin: 5px 0; font-size: 14px; }
+footer a { color: var(--border); text-decoration: none; }
+.footer-copyright { margin-top: 15px; font-size: 13px; }
+
+/* 13. 圖片資訊卡（服務介紹、費率表） ------------------------------------ */
+.info-image-card {
+  background: #fff;
+  border: 1px solid var(--brand-soft);
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+.info-image-title { color: var(--brand); font-size: 20px; font-weight: bold; margin: 0 0 6px 0; }
+.info-image-figure { margin: 0; text-align: center; }
+.info-image-figure a { display: block; }
+.info-image-figure img {
+  width: 100%;
+  height: auto;
+  border-radius: 10px;
+  border: 1px solid var(--brand-soft);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.info-image-figure a:hover img { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12); }
+.info-image-figure figcaption { margin-top: 10px; color: var(--text-muted); font-size: 14px; font-weight: 500; }
+
+/* 寬表格圖：桌機滿版；手機維持可讀寬度並可左右滑動 */
+.info-image-wide { display: block; width: 100%; min-width: 720px; height: auto; border-radius: 8px; }
+
+/* 14. 圖片彈窗（Lightbox） ---------------------------------------------- */
+a[data-lightbox] { cursor: zoom-in; }
+
+.lightbox {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 30000;                     /* 高於導覽列(9999)與最新消息彈窗(20000) */
+  background: rgba(0, 0, 0, 0.94);
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.lightbox.open { display: block; }
+
+.lightbox-stage {
+  display: flex;
+  min-height: 100%;
+  box-sizing: border-box;
+  padding: 60px 12px 28px;
+}
+.lightbox-img {
+  margin: auto;                       /* 用 auto 置中：放大超出畫面時不會被切掉左側 */
+  max-width: 100%;
+  max-height: calc(100vh - 90px);
+  object-fit: contain;
+  background: #fff;
+  border-radius: 6px;
+  cursor: zoom-in;
+}
+.lightbox.zoomed .lightbox-img {      /* 放大＝原始尺寸，可上下左右滑動查看 */
+  max-width: none;
+  max-height: none;
+  cursor: zoom-out;
+}
+
+.lightbox-close {
+  position: fixed;
+  top: 10px;
+  right: 12px;
+  width: 44px;
+  height: 44px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--heading);
+  font-size: 26px;
+  line-height: 1;
+  cursor: pointer;
+  z-index: 1;
+}
+.lightbox-close:hover { background: #fff; }
+.lightbox-hint {
+  position: fixed;
+  top: 20px;
+  left: 16px;
+  right: 70px;
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 13px;
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* 15. 載入失敗提示 ------------------------------------------------------- */
+#loadErrorNotice {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 40000;
+  background: #c53030;
+  color: #fff;
+  padding: 12px 16px;
+  font-size: 14px;
+  line-height: 1.5;
+  text-align: center;
+}
+/* 16. 托育學科模擬測驗 Iframe 容器（寬版＋手機滿版無邊框） ----------------- */
+.mock-exam-page {
+  max-width: 1320px;               /* 桌機版放寬至 1320px，題目與按鈕更寬敞 */
+  margin: 95px auto 40px auto;
+  padding: 0 20px;
+}
+
+.quiz-iframe-wrapper {
+  width: 100%;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  background: #fff;
+}
+
+.quiz-iframe-wrapper iframe {
+  width: 100%;
+  height: calc(100vh - 130px);     /* 桌機版自動撐滿螢幕高度 */
+  min-height: 820px;
+  border: none;
+  display: block;
+}
+
+@media (max-width: 900px) {
+  .mock-exam-page {
+    max-width: 100%;
+    margin: 0;
+    padding: 0;
+  }
+
+  .quiz-iframe-wrapper {
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .quiz-iframe-wrapper iframe {
+    height: 1150px;                /* 預設高度（備援）；測驗頁會回報實際高度，由 app.js 自動調整 */
+    min-height: 600px;
+  }
+}
+
+/* ==========================================================================
+   最新消息：前往報名按鈕
+   ========================================================================== */
+.news-card-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 15px; flex-wrap: wrap; }
+.news-card-foot .news-card-more { margin-top: 0; }
+.news-card-cta {
+  background: var(--brand); color: #fff; border: none; border-radius: 16px;
+  padding: 6px 14px; font-size: 12px; font-weight: bold; cursor: pointer;
+  box-shadow: 0 2px 4px rgba(217, 107, 67, 0.35); transition: filter 0.15s, transform 0.15s;
+}
+.news-card-cta:hover { filter: brightness(0.92); transform: translateY(-1px); }
+.modal-action-btn {
+  display: block; width: 100%; margin: 18px 0 10px; padding: 13px 20px;
+  background: #2b6cb0; color: #fff; border: none; border-radius: 12px;
+  font-size: 16px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 10px rgba(43, 108, 176, 0.3);
+}
+.modal-action-btn:hover { background: #1e4e8c; }

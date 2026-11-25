@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<base target="_top">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>報名管理後台</title>
+<style>
+:root{--bg:#f6f3ef;--card:#fff;--ink:#2d2a26;--sub:#6b655d;--line:#e4ded6;--brand:#d96b43;--brand-d:#b8532f;--ok:#1f7a4d;--okbg:#e3f4ea;--warn:#9a5b00;--warnbg:#fdf0d5;--bad:#b3261e;--badbg:#fbe4e2;--mute:#6b7280;--mutebg:#eceae6;--focus:#2b6cb0}
+@media (prefers-color-scheme:dark){:root{--bg:#1c1a18;--card:#26231f;--ink:#f1ece6;--sub:#b5aca1;--line:#3b3631;--okbg:#17372a;--ok:#7bd6a3;--warnbg:#3d3010;--warn:#f0c36a;--badbg:#42201d;--bad:#f2a29c;--mutebg:#34302b;--mute:#b9b3ab}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 system-ui,-apple-system,"Noto Sans TC","Microsoft JhengHei",sans-serif}
+header{position:sticky;top:0;z-index:20;background:var(--card);border-bottom:1px solid var(--line);padding:10px 16px;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+header h1{font-size:17px;margin:0;color:var(--brand)}
+header .who{margin-left:auto;font-size:13px;color:var(--sub)}
+nav{display:flex;gap:4px;padding:0 12px;background:var(--card);border-bottom:1px solid var(--line);overflow-x:auto;position:sticky;top:53px;z-index:19}
+nav button{border:0;background:none;padding:11px 14px;font:inherit;color:var(--sub);cursor:pointer;border-bottom:3px solid transparent;white-space:nowrap}
+nav button.on{color:var(--brand);border-color:var(--brand);font-weight:700}
+main{max-width:1180px;margin:0 auto;padding:16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:16px}
+h2{font-size:17px;margin:0 0 4px}
+.hint{color:var(--sub);font-size:13px;margin:2px 0 10px}
+button,.btn{font:inherit;cursor:pointer;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--ink);padding:7px 13px}
+button:hover{border-color:var(--brand)}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--focus);outline-offset:1px}
+.primary{background:var(--brand);border-color:var(--brand);color:#fff;font-weight:700}
+.primary:hover{background:var(--brand-d)}
+.danger{color:var(--bad);border-color:var(--bad)}
+.small{padding:4px 9px;font-size:13px}
+button:disabled{opacity:.5;cursor:not-allowed}
+input[type=text],input[type=number],input[type=date],input[type=datetime-local],input[type=url],select,textarea{font:inherit;width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink)}
+textarea{min-height:90px;resize:vertical}
+label.f{display:block;font-size:13px;color:var(--sub);margin-bottom:3px}
+.grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(210px,1fr))}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.tablewrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{padding:9px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+th{font-size:12.5px;color:var(--sub);font-weight:600;white-space:nowrap;background:var(--bg)}
+td.num{white-space:nowrap}
+.badge{display:inline-block;padding:2px 9px;border-radius:99px;font-size:12.5px;font-weight:700;white-space:nowrap}
+.b-ok{background:var(--okbg);color:var(--ok)}.b-warn{background:var(--warnbg);color:var(--warn)}.b-bad{background:var(--badbg);color:var(--bad)}.b-mute{background:var(--mutebg);color:var(--mute)}
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0 12px}
+.chip{border:1px solid var(--line);border-radius:99px;padding:3px 12px;font-size:13px;background:var(--card)}
+.chip b{color:var(--brand)}
+.coursehead{margin:18px 0 6px;font-size:15px;font-weight:700;color:var(--brand)}
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:flex-start;justify-content:center;padding:24px 12px;overflow:auto;z-index:50}
+.overlay.on{display:flex}
+.dialog{background:var(--card);border-radius:14px;width:100%;max-width:760px;padding:18px;box-shadow:0 12px 40px rgba(0,0,0,.3)}
+.dialog h3{margin:0 0 10px;font-size:17px}
+.dialog .foot{display:flex;gap:8px;justify-content:flex-end;margin-top:14px;flex-wrap:wrap}
+.toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:#2d2a26;color:#fff;padding:10px 18px;border-radius:10px;z-index:90;display:none;max-width:90vw;font-size:14px}
+.toast.err{background:var(--bad)}
+.note{background:var(--warnbg);color:var(--warn);border-radius:8px;padding:8px 12px;font-size:13px;margin:8px 0}
+.switch{display:inline-flex;align-items:center;gap:8px;cursor:pointer;font-weight:600}
+.switch input{width:18px;height:18px;accent-color:var(--brand)}
+.newscard{border:1px solid var(--line);border-radius:10px;padding:12px;margin-bottom:12px;background:var(--bg)}
+.loading{padding:40px;text-align:center;color:var(--sub)}
+.sec{display:none}.sec.on{display:block}
+details{margin:6px 0}
+summary{cursor:pointer;color:var(--brand);font-weight:600}
+@media (max-width:640px){main{padding:10px}th,td{padding:7px 6px}header{padding:8px 10px}nav{top:49px}}
+</style>
+</head>
+<body>
+<header>
+  <h1>新竹市月子照顧服務人員職業工會｜報名管理後台</h1>
+  <button class="small" id="btnReload" type="button">重新整理</button>
+  <a class="btn small" id="sheetLink" href="#" target="_blank" rel="noopener" style="text-decoration:none">開啟試算表</a>
+  <span class="who" id="who"></span>
+</header>
+<nav id="tabs">
+  <button data-tab="batches" class="on" type="button">課程與名額</button>
+  <button data-tab="regs" type="button">報名人數</button>
+  <button data-tab="settings" type="button">年度與表單</button>
+  <button data-tab="news" type="button">最新公告</button>
+  <button data-tab="help" type="button">使用說明</button>
+</nav>
+<main>
+  <div id="loading" class="loading">讀取中…</div>
+  <div id="fatal" class="card" style="display:none;border-color:var(--bad)"></div>
+
+  <section id="tab-batches" class="sec on"></section>
+  <section id="tab-regs" class="sec"></section>
+  <section id="tab-settings" class="sec"></section>
+  <section id="tab-news" class="sec"></section>
+  <section id="tab-help" class="sec"></section>
+</main>
+
+<div class="overlay" id="ov"><div class="dialog" id="dlg"></div></div>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+(function () {
+  'use strict';
+  var S = null;                       // 後台回傳的全部狀態
+    var NEWS = [];                      // 編輯中的公告
+  var $ = function (id) { return document.getElementById(id); };
+  var esc = function (v) { return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
+  var COURSES = ['gov', 'self', 'skill', 'maternity', 'massage'];
+  var LINK_PRESETS = [
+    ['', '（不放按鈕）', ''], ['/apply', '線上申請入會', 'applyForm'], ['/labor', '勞健保異動申請', 'laborForm'],
+    ['/service-apply', '月子服務需求單', 'serviceApplyForm'], ['/course-nanny-gov', '托育職訓補助班報名', 'govCourseForm'],
+    ['/course-nanny-self', '托育自費班報名', 'selfCourseForm'], ['/course-nanny-skill', '術科加強班報名', 'skillCourseForm'],
+    ['/course-maternity', '月子人員培訓班報名', 'maternityCourseForm'], ['/course-massage', '嬰幼兒按摩班報名', 'massageCourseForm']
+  ];
+
+  /* ---------- 與後台溝通 ---------- */
+  function call(name, a1) {
+    var map = { adminGetState: ['GET', 'state'], adminSaveBatch: ['POST', 'batch'], adminDeleteBatch: ['POST', 'batch-delete'], adminSaveYears: ['POST', 'years'], adminSaveForms: ['POST', 'forms'], adminSaveNews: ['POST', 'news'], adminImport: ['POST', 'import'] };
+    var m = map[name], body;
+    if (name === 'adminSaveBatch') body = { row: a1.row || '', batch: a1 };
+    else if (name === 'adminSaveYears') body = { years: a1 };
+    else if (name === 'adminSaveForms') body = { forms: a1 };
+    else if (name === 'adminSaveNews') body = { news: a1 };
+    else body = a1 || {};
+    return fetch('/api/admin/' + m[1], { method: m[0], credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: m[0] === 'POST' ? JSON.stringify(body) : undefined })
+      .then(function (res) {
+        var ct = res.headers.get('content-type') || '';
+        if (res.redirected || ct.indexOf('json') < 0) throw new Error('登入已逾時，請重新整理這個頁面再登入一次');
+        return res.json();
+      })
+      .then(function (j) { if (!j.ok) throw new Error(j.error || '操作失敗'); return j; }, function (e) { throw new Error(e.message || '網路連線失敗，請稍後再試'); });
+  }
+  var toastTimer;
+  function toast(msg, isErr) {
+    var t = $('toast'); t.textContent = msg; t.className = 'toast' + (isErr ? ' err' : ''); t.style.display = 'block';
+    clearTimeout(toastTimer); toastTimer = setTimeout(function () { t.style.display = 'none'; }, isErr ? 7000 : 3200);
+  }
+  function busy(btn, on) { if (btn) { btn.disabled = on; if (on) { btn.dataset.t = btn.textContent; btn.textContent = '處理中…'; } else if (btn.dataset.t) btn.textContent = btn.dataset.t; } }
+  async function act(btn, fn, okMsg) {
+    busy(btn, true);
+    try { var r = await fn(); if (okMsg) toast(okMsg); return r; }
+    catch (e) { toast(e.message, true); return null; }
+    finally { busy(btn, false); }
+  }
+
+  /* ---------- 對話框 ---------- */
+  function openDialog(html) { $('dlg').innerHTML = html; $('ov').classList.add('on'); }
+  function closeDialog() { $('ov').classList.remove('on'); $('dlg').innerHTML = ''; }
+  $('ov').addEventListener('mousedown', function (e) { if (e.target === $('ov')) closeDialog(); });
+  function askConfirm(msg, okLabel) {
+    return new Promise(function (res) {
+      openDialog('<h3>請確認</h3><p style="white-space:pre-wrap">' + esc(msg) + '</p><div class="foot"><button type="button" id="dNo">取消</button><button type="button" class="primary" id="dYes">' + esc(okLabel || '確定') + '</button></div>');
+      $('dNo').onclick = function () { closeDialog(); res(false); }; $('dYes').onclick = function () { closeDialog(); res(true); };
+    });
+  }
+  function askText(title, value) {
+    return new Promise(function (res) {
+      openDialog('<h3>' + esc(title) + '</h3><textarea id="dTxt" maxlength="500">' + esc(value || '') + '</textarea><div class="foot"><button type="button" id="dNo">取消</button><button type="button" class="primary" id="dYes">儲存</button></div>');
+      $('dTxt').focus();
+      $('dNo').onclick = function () { closeDialog(); res(null); }; $('dYes').onclick = function () { var v = $('dTxt').value; closeDialog(); res(v); };
+    });
+  }
+
+  /* ---------- 分頁 ---------- */
+  document.querySelectorAll('#tabs button').forEach(function (b) {
+    b.addEventListener('click', function () { showTab(b.dataset.tab); });
+  });
+  function showTab(name) {
+    document.querySelectorAll('#tabs button').forEach(function (x) { x.classList.toggle('on', x.dataset.tab === name); });
+    document.querySelectorAll('.sec').forEach(function (x) { x.classList.toggle('on', x.id === 'tab-' + name); });
+    if (name === 'regs') renderRegs();
+  }
+
+  /* ---------- 共用：課程名稱、狀態徽章 ---------- */
+  function cname(k) { return (S.courseLabels && S.courseLabels[k]) || k; }
+  function statusBadge(b) {
+    if (!b.valid) return '<span class="badge b-bad">課程代碼錯誤</span>';
+    if (!b.show) return '<span class="badge b-mute">已隱藏</span>';
+    if (b.forceClosed) return '<span class="badge b-bad">手動關閉</span>';
+    if (b.expired) return '<span class="badge b-mute">已截止</span>';
+    if (b.full) return b.waitlistOpen ? '<span class="badge b-warn">額滿・候補中</span>' : '<span class="badge b-bad">額滿</span>';
+    return '<span class="badge b-ok">開放報名</span>';
+  }
+  function quotaText(b) {
+    if (b.totalQuota === '' && b.quota === '') return '不限';
+    if (b.totalQuota === '') return '尚餘 ' + b.quota;
+    return b.enrolled + ' / ' + b.totalQuota;
+  }
+
+  /* ---------- 課程與名額 ---------- */
+  function renderBatches() {
+    var html = '<div class="card"><div class="row"><div><h2>課程梯次與名額</h2><p class="hint">改完按「儲存」，網站約 1 分鐘內更新（有人報名時人數會立刻更新）。「正取」是已報名人數／總名額，額滿後可開放候補。</p></div><button class="primary" id="btnAdd" type="button" style="margin-left:auto">＋ 新增梯次</button></div></div>';
+    COURSES.forEach(function (c) {
+      var list = S.batches.filter(function (b) { return b.course === c; });
+      html += '<div class="coursehead">' + esc(cname(c)) + '</div><div class="card tablewrap"><table><thead><tr><th>梯次</th><th>報名期間</th><th>費用</th><th>正取</th><th>候補</th><th>狀態</th><th></th></tr></thead><tbody>';
+      if (!list.length) html += '<tr><td colspan="7" style="color:var(--sub)">目前沒有梯次</td></tr>';
+      list.forEach(function (b) {
+        html += '<tr><td><b>' + esc(b.id) + '</b><br><span style="color:var(--sub);font-size:13px">' + esc(b.name) + '</span></td>' +
+          '<td class="num" style="font-size:13px">' + esc(b.regStart || '即日起') + '<br>～ ' + esc(b.regEnd || '—') + '</td>' +
+          '<td class="num">' + esc(b.fee || '—') + '</td>' +
+          '<td class="num">' + esc(quotaText(b)) + '</td>' +
+          '<td class="num">' + (b.waitlistQuota === '' || b.waitlistQuota === 0 ? '<span style="color:var(--sub)">不開放</span>' : b.waitlistCount + ' / ' + b.waitlistQuota) + '</td>' +
+          '<td>' + statusBadge(b) + '</td>' +
+          '<td class="num"><button class="small" data-edit="' + esc(b.row) + '" type="button">編輯</button></td></tr>';
+      });
+      html += '</tbody></table></div>';
+    });
+    $('tab-batches').innerHTML = html;
+    $('btnAdd').onclick = function () { editBatch(null); };
+    $('tab-batches').querySelectorAll('[data-edit]').forEach(function (b) { b.onclick = function () { editBatch(b.dataset.edit); }; });
+      }
+
+  function toLocalInput(s) { var m = String(s || '').match(/^(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2})/); return m ? m[1] + 'T' + m[2] : ''; }
+  function fromLocalInput(s) { return s ? s.replace('T', ' ') : ''; }
+  function field(label, inner, hint) { return '<div><label class="f">' + label + '</label>' + inner + (hint ? '<div class="hint" style="margin:3px 0 0">' + hint + '</div>' : '') + '</div>'; }
+
+  function editBatch(row) {
+    var b = row ? S.batches.filter(function (x) { return x.row === row; })[0] : null;
+    var isNew = !b;
+    b = b || { course: 'gov', id: '', name: '', shortLabel: '', period: '', dates: '', dateText: '', examDate: '', fee: '', regStart: '', regEnd: '', totalQuota: '', quota: '', waitlistQuota: '', forceClosed: false, closedReason: '', show: true, enrolled: 0, waitlistCount: 0, autoQuota: false, statusText: '' };
+    var courseOpts = COURSES.map(function (c) { return '<option value="' + c + '"' + (c === b.course ? ' selected' : '') + '>' + esc(cname(c)) + '</option>'; }).join('');
+    openDialog('<h3>' + (isNew ? '新增梯次' : '編輯梯次：' + esc(b.id)) + '</h3>' +
+      (isNew ? '' : '<div class="note" style="background:var(--mutebg);color:var(--ink)">目前：' + esc(b.statusText) + '</div>') +
+      '<div class="grid">' +
+      field('課程', '<select id="e_course"' + (isNew ? '' : ' disabled') + '>' + courseOpts + '</select>') +
+      field('梯次代碼 *', '<input type="text" id="e_id" value="' + esc(b.id) + '"' + (isNew ? '' : ' disabled') + '>', isNew ? '例如 116SKILL02；建立後不能修改（報名資料靠它對應）' : '建立後不能修改') +
+      field('梯次名稱 *', '<input type="text" id="e_name" value="' + esc(b.name) + '">') +
+      field('簡短說明', '<input type="text" id="e_short" value="' + esc(b.shortLabel) + '">', '報名表選項上顯示的短文字') +
+      field('訓練期間', '<input type="text" id="e_period" value="' + esc(b.period) + '">') +
+      field('上課日期', '<input type="text" id="e_dates" value="' + esc(b.dates) + '">') +
+      field('上課日期（文字）', '<input type="text" id="e_dateText" value="' + esc(b.dateText) + '">') +
+      field('徵試日', '<input type="text" id="e_exam" value="' + esc(b.examDate) + '">') +
+      field('費用', '<input type="text" id="e_fee" value="' + esc(b.fee) + '">', '填數字即可，例如 9500；9 折金額網頁自動換算') +
+      field('報名開始', '<input type="datetime-local" id="e_start" value="' + esc(toLocalInput(b.regStart)) + '">', '不填＝即日起') +
+      field('報名截止', '<input type="datetime-local" id="e_end" value="' + esc(toLocalInput(b.regEnd)) + '">', '只選日期沒選時間時，視為 23:59 截止') +
+      field('總名額', '<input type="number" min="0" id="e_total" value="' + esc(b.totalQuota) + '">', '填了就自動用「已報名人數」算出尚餘名額；不填＝不限（或手動填尚餘名額）') +
+      field('候補名額', '<input type="number" min="0" id="e_wait" value="' + esc(b.waitlistQuota) + '">', '額滿後最多收幾位候補；空白或 0＝不開放候補') +
+      field('尚餘名額（手動）', '<input type="number" min="0" id="e_quota" value="' + esc(b.autoQuota ? '' : b.quota) + '">', '只在「總名額」空白時才使用') +
+      '</div>' +
+      '<div class="row" style="margin-top:12px;gap:22px"><label class="switch"><input type="checkbox" id="e_closed"' + (b.forceClosed ? ' checked' : '') + '> 手動關閉報名</label>' +
+      '<label class="switch"><input type="checkbox" id="e_show"' + (b.show ? ' checked' : '') + '> 顯示在網站</label></div>' +
+      '<div style="margin-top:10px">' + field('關閉原因（手動關閉時顯示給民眾）', '<input type="text" id="e_reason" value="' + esc(b.closedReason) + '">') + '</div>' +
+      '<div class="foot">' + (isNew ? '' : '<button type="button" id="dDel" style="margin-right:auto;color:var(--bad)">刪除梯次</button>') + '<button type="button" id="dNo">取消</button><button type="button" class="primary" id="dYes">儲存</button></div>');
+    $('dNo').onclick = closeDialog;
+    if ($('dDel')) $('dDel').onclick = async function () {
+      if (!(await askConfirm('確定刪除梯次「' + b.id + '」？已有人報名的梯次不能刪除，請改用「顯示在網站」關閉。', '刪除'))) return;
+      var st = await act(null, function () { return call('adminDeleteBatch', { row: b.row }); }, '已刪除');
+      if (st) { S = st; renderAll(); }
+    };
+    $('dYes').onclick = async function () {
+      var payload = {
+        row: b.row || '', course: $('e_course').value, id: $('e_id').value.trim(), name: $('e_name').value, shortLabel: $('e_short').value,
+        period: $('e_period').value, dates: $('e_dates').value, dateText: $('e_dateText').value, examDate: $('e_exam').value, fee: $('e_fee').value,
+        regStart: fromLocalInput($('e_start').value), regEnd: fromLocalInput($('e_end').value),
+        totalQuota: $('e_total').value, waitlistQuota: $('e_wait').value, quota: $('e_quota').value,
+        forceClosed: $('e_closed').checked, closedReason: $('e_reason').value, show: $('e_show').checked
+      };
+      var st = await act($('dYes'), function () { return call('adminSaveBatch', payload); }, '已儲存，網站約 1 分鐘內更新');
+      if (st) { S = st; closeDialog(); renderAll(); }
+    };
+  }
+
+  /* ---------- 報名人數（名單與處理回到 Google 試算表） ---------- */
+  function sheetTabUrl(key) {
+    var base = String(S.sheetUrl || '').split('#')[0];
+    if (!base) return '';
+    var g = S.sheetGids && S.sheetGids[key];
+    return g ? base + '#gid=' + g.gid : base;
+  }
+  function renderRegs() {
+    if (!S) return;
+    var h = '<div class="card"><h2>報名人數</h2><p class="hint">報名資料都存在 Google 試算表。要看名單、取消報名、候補轉正取、寫備註，請按「開啟試算表分頁」。取消後（是否取消選「是」）名額約 1 分鐘內自動釋出。' +
+      (S.countsAt ? '<br>人數最後同步：' + esc(S.countsAt.replace('T', ' ').slice(0, 19)) + '（UTC）' : '<br><b style="color:var(--bad)">尚未收到試算表的同步資料，請完成使用說明裡的「啟用名額同步」。</b>') + '</p></div>';
+    COURSES.forEach(function (c) {
+      var list = S.batches.filter(function (b) { return b.course === c; });
+      h += '<div class="coursehead">' + esc(cname(c)) + (sheetTabUrl(c) ? '　<a class="btn small" style="text-decoration:none" target="_blank" rel="noopener" href="' + esc(sheetTabUrl(c)) + '">開啟試算表分頁</a>' : '') + '</div>' +
+        '<div class="card tablewrap"><table><thead><tr><th>梯次</th><th>正取人數</th><th>候補人數</th><th>狀態</th></tr></thead><tbody>';
+      if (!list.length) h += '<tr><td colspan="4" style="color:var(--sub)">目前沒有梯次</td></tr>';
+      list.forEach(function (b) {
+        h += '<tr><td><b>' + esc(b.id) + '</b><br><span style="color:var(--sub);font-size:13px">' + esc(b.name) + '</span></td><td class="num">' + esc(quotaText(b)) + '</td><td class="num">' + (b.waitlistQuota === '' || b.waitlistQuota === 0 ? b.waitlistCount : b.waitlistCount + ' / ' + b.waitlistQuota) + '</td><td>' + statusBadge(b) + '</td></tr>';
+      });
+      h += '</tbody></table></div>';
+    });
+    var other = [['apply', '入會申請'], ['labor', '勞健保異動'], ['service', '月子服務需求']].filter(function (x) { return sheetTabUrl(x[0]); });
+    if (other.length) h += '<div class="card"><h2>其他表單</h2><div class="row">' + other.map(function (x) { return '<a class="btn" style="text-decoration:none" target="_blank" rel="noopener" href="' + esc(sheetTabUrl(x[0])) + '">' + esc(x[1]) + '</a>'; }).join('') + '</div></div>';
+    $('tab-regs').innerHTML = h;
+  }
+
+  /* ---------- 年度與表單 ---------- */
+  function renderSettings() {
+    var h = '<div class="card"><h2>各課程年度</h2><p class="hint">填民國年（例如 116）。網頁上的標題、表單、按鈕、成功訊息裡的年度都會一起更新。</p><div class="grid">' +
+      S.years.map(function (y) { return field(esc(y.name), '<input type="number" min="100" max="300" data-year="' + esc(y.course) + '" value="' + esc(y.year) + '">'); }).join('') +
+      '</div><div style="margin-top:12px"><button class="primary" id="btnYears" type="button">儲存年度</button></div></div>';
+    h += '<div class="card"><h2>表單開關</h2><p class="hint">關閉後，網站上對應的入口會改成導向聯絡 LINE，也不再收件。五個課程的報名請在「課程與名額」關閉梯次。</p>';
+    S.forms.forEach(function (f) {
+      h += '<div class="newscard" data-form="' + esc(f.code) + '"><div class="row"><b>' + esc(f.name) + '</b><label class="switch" style="margin-left:auto"><input type="checkbox" data-f="open"' + (f.open ? ' checked' : '') + '> 開放受理</label></div>' +
+        '<div class="grid" data-closed style="margin-top:10px">' +
+        field('關閉時顯示的標題', '<input type="text" data-f="title" value="' + esc(f.title) + '">') +
+        field('聯絡按鈕文字', '<input type="text" data-f="linkText" value="' + esc(f.linkText) + '">') +
+        field('聯絡按鈕連結（https://）', '<input type="url" data-f="linkUrl" value="' + esc(f.linkUrl) + '">') +
+        '</div><div style="margin-top:10px" data-closed>' + field('關閉時顯示的訊息', '<textarea data-f="message">' + esc(f.message) + '</textarea>') + '</div></div>';
+    });
+    h += '<button class="primary" id="btnForms" type="button">儲存表單開關</button></div>';
+    $('tab-settings').innerHTML = h;
+    $('btnYears').onclick = async function () {
+      var list = Array.prototype.map.call($('tab-settings').querySelectorAll('[data-year]'), function (i) { return { course: i.dataset.year, year: i.value }; });
+      var st = await act(this, function () { return call('adminSaveYears', list); }, '年度已儲存');
+      if (st) { S = st; renderAll(); }
+    };
+    var toggleClosed = function (card) { var open = card.querySelector('[data-f=open]').checked; card.querySelectorAll('[data-closed]').forEach(function (x) { x.style.opacity = open ? '.45' : '1'; }); };
+    $('tab-settings').querySelectorAll('[data-form]').forEach(function (card) { toggleClosed(card); card.querySelector('[data-f=open]').onchange = function () { toggleClosed(card); }; });
+    $('btnForms').onclick = async function () {
+      var list = Array.prototype.map.call($('tab-settings').querySelectorAll('[data-form]'), function (card) {
+        var g = function (k) { return card.querySelector('[data-f=' + k + ']'); };
+        return { code: card.dataset.form, open: g('open').checked, title: g('title').value, message: g('message').value, linkText: g('linkText').value, linkUrl: g('linkUrl').value };
+      });
+      var st = await act(this, function () { return call('adminSaveForms', list); }, '表單開關已儲存');
+      if (st) { S = st; renderAll(); }
+    };
+  }
+
+  /* ---------- 最新公告 ---------- */
+  function anchorFor(link) { var p = LINK_PRESETS.filter(function (x) { return x[0] === link; })[0]; return p ? p[2] : ''; }
+  function renderNews() {
+    var h = '<div class="card"><div class="row"><div><h2>最新公告</h2><p class="hint">網站會依日期由新到舊自動排列。內容可直接換行；按鈕可選「前往報名」。改完要按最下面的「儲存全部公告」。</p></div><button type="button" id="btnNewsAdd" style="margin-left:auto" class="primary">＋ 新增公告</button></div></div>';
+    NEWS.forEach(function (n, i) {
+      var linkOpts = LINK_PRESETS.map(function (p) { return '<option value="' + p[0] + '"' + (p[0] === n.link ? ' selected' : '') + '>' + esc(p[1]) + '</option>'; }).join('');
+      var custom = n.link && !LINK_PRESETS.some(function (p) { return p[0] === n.link; });
+      if (custom) linkOpts += '<option value="' + esc(n.link) + '" selected>' + esc(n.link) + '（自訂）</option>';
+      h += '<div class="newscard" data-n="' + i + '"><div class="grid">' +
+        field('日期', '<input type="date" data-k="date" value="' + esc(n.date) + '">') +
+        field('標題', '<input type="text" data-k="title" value="' + esc(n.title) + '">') +
+        field('按鈕要前往', '<select data-k="link">' + linkOpts + '</select>') +
+        field('按鈕文字', '<input type="text" data-k="linkText" placeholder="立即前往報名 ➔" value="' + esc(n.linkText) + '">') + '</div>' +
+        '<div style="margin-top:10px">' + field('內容', '<textarea data-k="content">' + esc(n.content) + '</textarea>') + '</div>' +
+        '<div class="grid" style="margin-top:10px">' + field('圖片網址（選填）', '<input type="url" data-k="image" value="' + esc(n.image) + '">', '圖片放在網站 images/ 資料夾時寫 images/檔名.jpg') + '</div>' +
+        '<div class="row" style="margin-top:10px;gap:20px"><label class="switch"><input type="checkbox" data-k="show"' + (n.show ? ' checked' : '') + '> 顯示在網站</label>' +
+        '<label class="switch"><input type="checkbox" data-k="scroll"' + (n.anchor ? ' checked' : '') + '> 按鈕直接捲到報名表</label>' +
+        '<button type="button" class="small danger" data-del="' + i + '" style="margin-left:auto">刪除</button></div></div>';
+    });
+    h += '<div class="card"><button class="primary" id="btnNewsSave" type="button">儲存全部公告</button></div>';
+    $('tab-news').innerHTML = h;
+    $('btnNewsAdd').onclick = function () { syncNews(); var d = new Date(); NEWS.unshift({ date: d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2), title: '', content: '', image: '', link: '', linkText: '', anchor: '', show: true }); renderNews(); };
+    $('tab-news').querySelectorAll('[data-del]').forEach(function (b) { b.onclick = async function () { if (!(await askConfirm('確定刪除這則公告？（按「儲存全部公告」後才會真的生效）'))) return; syncNews(); NEWS.splice(Number(b.dataset.del), 1); renderNews(); }; });
+    $('tab-news').querySelectorAll('select[data-k=link]').forEach(function (s) { s.onchange = function () { syncNews(); renderNews(); }; });
+    $('btnNewsSave').onclick = async function () {
+      syncNews();
+      var list = NEWS.map(function (n) { return { date: n.date, title: n.title, content: n.content, image: n.image, link: n.link, linkText: n.linkText, anchor: n.link ? n.anchor : '', show: n.show }; });
+      var st = await act(this, function () { return call('adminSaveNews', list); }, '公告已儲存，網站很快會更新');
+      if (st) { S = st; NEWS = JSON.parse(JSON.stringify(S.news)); renderNews(); }
+    };
+  }
+  function syncNews() {   // 把畫面上的輸入存回 NEWS
+    document.querySelectorAll('#tab-news [data-n]').forEach(function (card) {
+      var n = NEWS[Number(card.dataset.n)]; if (!n) return;
+      var g = function (k) { return card.querySelector('[data-k=' + k + ']'); };
+      n.date = g('date').value; n.title = g('title').value; n.content = g('content').value; n.image = g('image').value;
+      n.link = g('link').value; n.linkText = g('linkText').value; n.show = g('show').checked;
+      var previous = n.anchor;
+      n.anchor = g('scroll').checked ? (anchorFor(n.link) || previous || '') : '';
+    });
+  }
+
+  /* ---------- 使用說明 ---------- */
+  function renderHelp() {
+    $('tab-help').innerHTML = '<div class="card"><h2>使用說明</h2>' +
+      '<details open><summary>改課程、名額、費用</summary><p>到「課程與名額」按「編輯」。費用填數字即可，網站各報名表與 9 折金額會自動同步。總名額填了之後，尚餘名額會依報名人數自動計算。儲存後網站約 1 分鐘內更新。</p></details>' +
+      '<details><summary>候補怎麼用</summary><p>在梯次的「候補名額」填數字（例如 10），額滿後網站就會開放登記候補。有人取消時名額會自動釋出，由工作人員通知候補者；候補轉正取請到試算表把該筆「報名類別」改成「正取」。</p></details>' +
+      '<details><summary>查看與處理報名名單</summary><p>到「報名人數」分頁，按該課程的「開啟試算表分頁」，會直接開到 Google 試算表對應的分頁。取消報名＝把「是否取消」選成「是」，名額約 1 分鐘內釋出。</p></details>' +
+      '<details><summary>啟用名額同步（第一次必做）</summary><p>在 Google 試算表選單「報名後台 → 啟用 Cloudflare 名額同步（每分鐘）」。之後試算表上的報名人數會每分鐘自動同步到這裡與網站。</p></details>' +
+      '<details><summary>誰可以進入這個後台</summary><p>由 Cloudflare Access 決定（Zero Trust → Access → Applications 裡的管理員信箱名單），登入時會寄驗證碼或用 Google 登入。要增加管理員請到那裡新增信箱。</p></details>' +
+      '<details><summary>資料存在哪裡</summary><p>課程設定、年度、表單開關、公告存在 Cloudflare；報名資料存在 Google 試算表。課程梯次分頁上的內容不再是設定來源，請在這裡修改。</p></details></div>';
+  }
+
+  /* ---------- 總繪製 ---------- */
+  function renderAll() {
+    $('loading').style.display = 'none';
+    $('who').textContent = '登入：' + S.email;
+    $('sheetLink').href = S.sheetUrl || '#'; $('sheetLink').style.display = S.sheetUrl ? '' : 'none';
+    renderBatches(); renderSettings(); renderHelp();
+    if (!S.initialized) { $('tab-batches').insertAdjacentHTML('afterbegin', '<div class="card" style="border-color:var(--brand)"><h2>第一次使用：匯入現有設定</h2><p class="hint">目前還沒有設定。按下按鈕，會把 Google 試算表上現有的課程梯次、年度、表單開關、公告複製過來（只需要做一次）。</p><button class="primary" id="btnImport" type="button">從試算表匯入</button></div>'); $('btnImport').onclick = async function () { var st = await act(this, function () { return call('adminImport', {}); }, '已匯入'); if (st) { S = st; NEWS = JSON.parse(JSON.stringify(S.news || [])); renderAll(); } }; }
+    if (!NEWS.length || !document.querySelector('#tab-news [data-n]')) { NEWS = JSON.parse(JSON.stringify(S.news || [])); }
+    renderNews();
+    if ($('tab-regs').classList.contains('on')) renderRegs();
+  }
+
+  async function load() {
+    $('loading').style.display = 'block'; $('fatal').style.display = 'none';
+    try { S = await call('adminGetState'); NEWS = JSON.parse(JSON.stringify(S.news || [])); renderAll(); }
+    catch (e) {
+      $('loading').style.display = 'none';
+      var f = $('fatal'); f.style.display = 'block';
+      f.innerHTML = '<h2 style="color:var(--bad)">無法開啟管理後台</h2><p>' + esc(e.message) + '</p><p class="hint">請確認：1) 已用管理員信箱完成登入；2) Cloudflare 已設定 ACCESS_TEAM_DOMAIN、ACCESS_AUD 與 KV（HCMCCU_KV）。</p>';
+    }
+  }
+  $('btnReload').onclick = function () { load(); };
+  load();
+})();
+</script>
+</body>
+</html>

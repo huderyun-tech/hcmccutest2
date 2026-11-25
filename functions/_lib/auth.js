@@ -5,7 +5,7 @@ const enc = new TextEncoder();
 export function toHex(buf) { return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join(''); }
 
 export async function hmacHex(message, secret) {
-  const key = await crypto.subtle.importKey('raw', enc.encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  const key = await crypto.subtle.importKey('raw', enc.encode(String(secret).trim()), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
   return toHex(await crypto.subtle.sign('HMAC', key, enc.encode(message)));
 }
 

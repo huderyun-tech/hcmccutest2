@@ -14,7 +14,7 @@
 
 // 後台網址（和 js/config.js 的 SHEETS_API_URL 相同；這串網址本來就是公開的）。
 // 之後若換了新的後台網址，請兩個地方一起改；或在 Cloudflare Pages 設定變數 APPS_SCRIPT_URL（優先使用）。
-const DEFAULT_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbygKB0EwGSVna_RYV_qWMFeh1G9NeU5JRwAJr6lCkgt3ug9i3sd_anp5DwmYIBHgxueDA/exec';
+const DEFAULT_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxLwDZHrheyHgyb1dN6ocY0x7qvTY5ra_400IftI2NBOBJNG3jq_1L6wKxxDU9Q6Tk/exec';
 
 const FRESH_MS = 30 * 1000;        // 30 秒內視為最新
 const MAX_BODY = 200000;           // 與後台上限一致
@@ -92,11 +92,20 @@ import { requireAdmin, verifySigned, hmacHex } from '../_lib/auth.js';
 const KV_CONFIG = 'config', KV_COUNTS = 'counts';
 
 function kv(env) { return env && env.HCMCCU_KV; }
+/* Cloudflare KV 的 cacheTtl 最少 30 秒（小於 30 會被拒絕）。
+   同一個執行環境剛寫入的資料，一分鐘內直接用記憶體裡的（確保「剛儲存就讀得到」）。 */
+const recent = {};
 async function getDoc(env, key, ttl) {
   const store = kv(env); if (!store) return null;
-  try { return await store.get(key, { type: 'json', cacheTtl: ttl || 30 }); } catch (e) { return null; }
+  const r = recent[key];
+  if (r && Date.now() - r.at < 60000) return JSON.parse(r.text);
+  try { return await store.get(key, { type: 'json', cacheTtl: Math.max(30, ttl || 30) }); } catch (e) { return null; }
 }
-async function putDoc(env, key, obj) { await kv(env).put(key, JSON.stringify(obj)); }
+async function putDoc(env, key, obj) {
+  const text = JSON.stringify(obj);
+  await kv(env).put(key, text);
+  recent[key] = { text, at: Date.now() };
+}
 
 const ok = (obj, extra) => json(JSON.stringify(Object.assign({ ok: true }, obj)), extra);
 const fail = (msg, status) => new Response(JSON.stringify({ ok: false, error: msg }), { status: status || 200, headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' } });

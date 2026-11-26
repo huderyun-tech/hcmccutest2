@@ -9,7 +9,7 @@
    資料不會被記錄、課程梯次使用 data.js 裡的內建資料。
    ========================================================================== */
 
-const SHEETS_API_URL = 'https://script.google.com/macros/s/AKfycbxLwDZHrheyHgyb1dN6ocY0x7qvTY5ra_400IftI2NBOBJNG3jq_1L6wKxxDU9Q6Tk/exec';
+const SHEETS_API_URL = 'https://script.google.com/macros/s/AKfycbygKB0EwGSVna_RYV_qWMFeh1G9NeU5JRwAJr6lCkgt3ug9i3sd_anp5DwmYIBHgxueDA/exec';
 
 /* ==========================================================================
    加速層：放在網站專案 functions/api/ 資料夾的程式，隨網站一起用 Git 部署到 Cloudflare Pages。

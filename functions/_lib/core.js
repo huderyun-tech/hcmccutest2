@@ -119,7 +119,7 @@ export function adminView(config, countsDoc, nowMs) {
   });
   return {
     ok: true, courseLabels: COURSE_LABELS, batches, years, forms, news: (config.news || []).map(n => ({ ...n, show: n.show !== false })),
-    initialized: (config.batches || []).length > 0 || (config.news || []).length > 0 || Object.keys(config.years || {}).length > 0,
+    initialized: (config.batches || []).length > 0,
     sheetUrl: (countsDoc && countsDoc.spreadsheetUrl) || '', sheetGids: (countsDoc && countsDoc.sheets) || {},
     countsAt: (countsDoc && countsDoc.updatedAt) || '', configAt: config.updatedAt || ''
   };

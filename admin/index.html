@@ -108,7 +108,7 @@ summary{cursor:pointer;color:var(--brand);font-weight:600}
 
   /* ---------- 與後台溝通 ---------- */
   function call(name, a1) {
-    var map = { adminGetState: ['GET', 'state'], adminSaveBatch: ['POST', 'batch'], adminDeleteBatch: ['POST', 'batch-delete'], adminSaveYears: ['POST', 'years'], adminSaveForms: ['POST', 'forms'], adminSaveNews: ['POST', 'news'], adminImport: ['POST', 'import'] };
+    var map = { adminGetState: ['GET', 'state'], adminSaveBatch: ['POST', 'batch'], adminDeleteBatch: ['POST', 'batch-delete'], adminSaveYears: ['POST', 'years'], adminSaveForms: ['POST', 'forms'], adminSaveNews: ['POST', 'news'], adminImport: ['POST', 'import'], adminMode: ['POST', 'mode'] };
     var m = map[name], body;
     if (name === 'adminSaveBatch') body = { row: a1.row || '', batch: a1 };
     else if (name === 'adminSaveYears') body = { years: a1 };
@@ -365,12 +365,30 @@ summary{cursor:pointer;color:var(--brand);font-weight:600}
       '<details><summary>資料存在哪裡</summary><p>課程設定、年度、表單開關、公告存在 Cloudflare；報名資料存在 Google 試算表。課程梯次分頁上的內容不再是設定來源，請在這裡修改。</p></details></div>';
   }
 
+  /* ---------- 網站設定來源開關 ---------- */
+  function renderMode() {
+    var cf = S.mode !== 'sheet';
+    var el = $('modeBar');
+    if (!el) { el = document.createElement('div'); el.id = 'modeBar'; var m = document.querySelector('main'); m.insertBefore(el, m.firstChild); }
+    el.className = 'card';
+    el.style.cssText = 'display:flex;align-items:center;gap:12px;flex-wrap:wrap;border-color:' + (cf ? 'var(--ok,#2e7d32)' : 'var(--bad,#c62828)');
+    el.innerHTML = '<div style="flex:1;min-width:240px"><b>網站目前使用：' + (cf ? '管理後台（Cloudflare）設定' : '試算表設定（舊流程）') + '</b>' +
+      '<div class="hint" style="margin:3px 0 0">' + (cf ? '在這裡改的課程、名額、年度、表單開關、公告，網站約 1 分鐘內生效。' : '網站正在讀 Google 試算表的設定，這個後台的修改暫時不會影響網站。') + '</div></div>' +
+      '<button id="btnMode" type="button" class="' + (cf ? '' : 'primary') + '">' + (cf ? '緊急退回試算表設定' : '切回管理後台設定') + '</button>';
+    $('btnMode').onclick = async function () {
+      var msg = cf ? '確定改成讀「Google 試算表」的設定嗎？網站約 1 分鐘內改用試算表上的課程梯次與名額（這個後台的設定會保留）。' : '確定改回使用「管理後台」的設定嗎？網站約 1 分鐘內生效。';
+      if (!(await askConfirm(msg, '確定切換'))) return;
+      var st = await act($('btnMode'), function () { return call('adminMode', { source: cf ? 'sheet' : 'cloudflare' }); }, '已切換，約 1 分鐘內生效');
+      if (st) { S = st; renderAll(); }
+    };
+  }
+
   /* ---------- 總繪製 ---------- */
   function renderAll() {
     $('loading').style.display = 'none';
     $('who').textContent = '登入：' + S.email;
     $('sheetLink').href = S.sheetUrl || '#'; $('sheetLink').style.display = S.sheetUrl ? '' : 'none';
-    renderBatches(); renderSettings(); renderHelp();
+    renderBatches(); renderSettings(); renderHelp(); renderMode();
     if (!S.initialized) { $('tab-batches').insertAdjacentHTML('afterbegin', '<div class="card" style="border-color:var(--brand)"><h2>第一次使用：匯入現有設定</h2><p class="hint">目前還沒有設定。按下按鈕，會把 Google 試算表上現有的課程梯次、年度、表單開關、公告複製過來（只需要做一次）。</p><button class="primary" id="btnImport" type="button">從試算表匯入</button></div>'); $('btnImport').onclick = async function () { var st = await act(this, function () { return call('adminImport', {}); }, '已匯入'); if (st) { S = st; NEWS = JSON.parse(JSON.stringify(S.news || [])); renderAll(); } }; }
     if (!NEWS.length || !document.querySelector('#tab-news [data-n]')) { NEWS = JSON.parse(JSON.stringify(S.news || [])); }
     renderNews();

@@ -14,7 +14,7 @@
 
 // 後台網址（和 js/config.js 的 SHEETS_API_URL 相同；這串網址本來就是公開的）。
 // 之後若換了新的後台網址，請兩個地方一起改；或在 Cloudflare Pages 設定變數 APPS_SCRIPT_URL（優先使用）。
-const DEFAULT_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbygKB0EwGSVna_RYV_qWMFeh1G9NeU5JRwAJr6lCkgt3ug9i3sd_anp5DwmYIBHgxueDA/exec';
+const DEFAULT_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxLwDZHrheyHgyb1dN6ocY0x7qvTY5ra_400IftI2NBOBJNG3jq_1L6wKxxDU9Q6Tk/exec';
 
 const FRESH_MS = 30 * 1000;        // 30 秒內視為最新
 const MAX_BODY = 200000;           // 與後台上限一致
@@ -101,9 +101,13 @@ async function putDoc(env, key, obj) { await kv(env).put(key, JSON.stringify(obj
 const ok = (obj, extra) => json(JSON.stringify(Object.assign({ ok: true }, obj)), extra);
 const fail = (msg, status) => new Response(JSON.stringify({ ok: false, error: msg }), { status: status || 200, headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' } });
 
-function hasConfig(cfg) { return cfg && ((cfg.batches || []).length > 0 || Object.keys(cfg.years || {}).length > 0 || (cfg.news || []).length > 0); }
+/* 來源開關：KV 的 mode = 'sheet' 時，網站與報名一律走 Google 試算表（舊流程）；其他（預設）= 用管理後台的設定 */
+async function getMode(env, ttl) { const m = await getDoc(env, 'mode', ttl === undefined ? 30 : ttl); return m && m.source === 'sheet' ? 'sheet' : 'cloudflare'; }
+
+function hasConfig(cfg) { return !!(cfg && (cfg.batches || []).length > 0); }   // 一個梯次都沒有 = 視為還沒設定好，網站繼續走 Google，不會整站暫停
 
 async function handleBatchesNew(context) {
+  if ((await getMode(context.env)) === 'sheet') return null;
   const cfg = await getDoc(context.env, KV_CONFIG, 30);
   if (!hasConfig(cfg)) return null;                         // 還沒啟用新版設定 → 走舊的（Google 後台）
   const counts = await getDoc(context.env, KV_COUNTS, 30);
@@ -118,6 +122,7 @@ function findField(fields, key) {
 
 async function handleSubmitNew(context) {
   const { env, request } = context;
+  if ((await getMode(env)) === 'sheet') return null;
   const cfg = await getDoc(env, KV_CONFIG, 30);
   if (!hasConfig(cfg) || !env.SYNC_SECRET) return null;     // 沒設定好 → 舊流程
   const body = await request.text();
@@ -164,7 +169,7 @@ async function handleSync(context) {
   const { env, request } = context;
   const body = await request.text();
   const good = await verifySigned(request.headers.get('X-Ts'), body, request.headers.get('X-Sig'), env.SYNC_SECRET);
-  if (!good) return fail('簽章不正確', 401);
+  if (!good) return fail('簽章不正確（Cloudflare 這邊密鑰長度 ' + String(env.SYNC_SECRET || '').trim().length + '，時間差 ' + Math.round((Date.now() - Number(request.headers.get('X-Ts') || 0)) / 1000) + ' 秒，內容長度 ' + body.length + '）', 401);
   if (!kv(env)) return fail('尚未綁定 KV（HCMCCU_KV）', 500);
   let d;
   try { d = JSON.parse(body); } catch (e) { return fail('格式不正確', 400); }
@@ -190,13 +195,33 @@ async function handleAdmin(context, path) {
   const sub = path.replace(/^\/api\/admin\/?/, '');
   const now = Date.now();
   try {
+    if (request.method === 'GET' && sub === 'diag') {          // 診斷：Cloudflare 向 Google 讀梯次，回報看到什麼
+      const base = backendUrl(env); const url = base + (base.includes('?') ? '&' : '?') + 'action=batches';
+      let info = { url: url.replace(/(\/s\/.{8}).*(\/exec.*)/, '$1…$2') };
+      try {
+        const res = await fetch(url, { redirect: 'follow' }); const text = await res.text();
+        info.status = res.status; info.contentType = res.headers.get('content-type'); info.length = text.length; info.head = text.slice(0, 300);
+        try { const d = JSON.parse(text); info.json = true; info.ok = d.ok; info.courses = Object.keys(d.courses || {}).map(k => k + ':' + (d.courses[k] || []).length); info.error = d.error; } catch (e) { info.json = false; }
+      } catch (e) { info.fetchError = String(e && e.message || e); }
+      return ok({ diag: info });
+    }
     if (request.method === 'GET' && sub === 'state') {
       const { cfg, counts } = await loadAdminState(env);
-      return ok({ ...adminView(cfg, counts, now), email: auth.email });
+      return ok({ ...adminView(cfg, counts, now), email: auth.email, mode: await getMode(env, 1) });
     }
     if (request.method !== 'POST') return fail('不支援的操作', 405);
     let input;
     try { input = JSON.parse((await request.text()) || '{}'); } catch (e) { return fail('資料格式不正確', 400); }
+    if (sub === 'mode') {
+      const src = input.source === 'sheet' ? 'sheet' : 'cloudflare';
+      if (src === 'cloudflare') {
+        const c0 = (await getDoc(env, KV_CONFIG, 1)) || emptyConfig();
+        if (!hasConfig(c0)) return fail('還沒有任何課程梯次設定，不能切到「Cloudflare 設定」。請先匯入或新增梯次。');
+      }
+      await putDoc(env, 'mode', { source: src, at: new Date().toISOString(), by: auth.email });
+      const st0 = await loadAdminState(env);
+      return ok({ ...adminView(st0.cfg, st0.counts, now), email: auth.email, mode: src });
+    }
     const { cfg, counts } = await loadAdminState(env);
     cfg.batches = cfg.batches || [];
 
@@ -226,17 +251,18 @@ async function handleAdmin(context, path) {
       const data = JSON.parse(await res.text());
       if (!data || data.ok !== true) return fail('讀不到 Google 試算表後台的資料');
       const imp = configFromLegacy(data);
+      if (!imp.config.batches.length) return fail('從 Google 讀到的資料裡沒有任何課程梯次（試算表「課程梯次」分頁可能是空的，或網址指到別的後台），所以沒有匯入。請先確認試算表。');
       imp.config.updatedAt = new Date().toISOString();
       await putDoc(env, KV_CONFIG, stamp(imp.config, auth.email));
       const prev = counts || {};
       await putDoc(env, KV_COUNTS, { ...prev, counts: { ...imp.counts, ...(prev.counts || {}) } });
       const st = await loadAdminState(env);
-      return ok({ ...adminView(st.cfg, st.counts, now), email: auth.email, imported: imp.config.batches.length });
+      return ok({ ...adminView(st.cfg, st.counts, now), email: auth.email, imported: imp.config.batches.length, mode: await getMode(env, 1) });
     } else {
       return fail('不支援的操作', 404);
     }
     await putDoc(env, KV_CONFIG, stamp(cfg, auth.email));
-    return ok({ ...adminView(cfg, counts, now), email: auth.email });
+    return ok({ ...adminView(cfg, counts, now), email: auth.email, mode: await getMode(env, 1) });
   } catch (e) {
     return fail(e && e.message ? e.message : '儲存失敗');
   }
@@ -250,7 +276,7 @@ export async function onRequest(context) {
     if (request.method === 'POST' && path === '/api/sync') return await handleSync(context);
     if (request.method === 'GET' && path === '/api/batches') return (await handleBatchesNew(context)) || await handleBatches(context);
     if (request.method === 'POST' && path === '/api/submit') return (await handleSubmitNew(context)) || await handleSubmit(context);
-    if (request.method === 'GET' && (path === '/api' || path === '/api/ping')) return json(JSON.stringify({ ok: true, service: 'hcmccu-fast', kv: !!kv(context.env), signed: !!context.env.SYNC_SECRET, access: !!(context.env.ACCESS_AUD && context.env.ACCESS_TEAM_DOMAIN) }));
+    if (request.method === 'GET' && (path === '/api' || path === '/api/ping')) return json(JSON.stringify({ ok: true, service: 'hcmccu-fast', kv: !!kv(context.env), signed: !!context.env.SYNC_SECRET, mode: await getMode(context.env), access: !!(context.env.ACCESS_AUD && context.env.ACCESS_TEAM_DOMAIN) }));
   } catch (e) {
     return json(JSON.stringify({ ok: false, error: '加速層發生錯誤' }));
   }

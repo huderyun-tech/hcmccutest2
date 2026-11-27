@@ -120,6 +120,7 @@ export function adminView(config, countsDoc, nowMs) {
   return {
     ok: true, courseLabels: COURSE_LABELS, batches, years, forms, news: (config.news || []).map(n => ({ ...n, show: n.show !== false })),
     initialized: (config.batches || []).length > 0,
+    codeCounts: counts,   // 試算表裡每個梯次代碼目前的報名人數（含已不在設定中的舊代碼）
     sheetUrl: (countsDoc && countsDoc.spreadsheetUrl) || '', sheetGids: (countsDoc && countsDoc.sheets) || {},
     countsAt: (countsDoc && countsDoc.updatedAt) || '', configAt: config.updatedAt || ''
   };
@@ -142,8 +143,8 @@ export function normalizeBatchInput(input, existing, all) {
   if (/[\s"'<>\\|]/.test(id) || id.length > 40) throw new Error('梯次代碼不能有空白或特殊符號，且不超過 40 字');
   const name = String(input.name || '').trim();
   if (!name) throw new Error('請填寫「梯次名稱」');
-  if (existing && (existing.course !== course || existing.id !== id)) throw new Error('已建立的梯次不能改「課程」或「梯次代碼」（會對不到已報名的資料）。需要的話請新增一個梯次，舊的改成「不顯示在網站」。');
-  if (!existing && all.some(b => b.course === course && b.id === id)) throw new Error(`這個課程已經有「${id}」這個梯次代碼`);
+  if (existing && existing.course !== course) throw new Error('已建立的梯次不能改「課程」。需要的話請新增一個梯次，舊的改成「不顯示在網站」。');
+  if (all.some(b => b !== existing && b.course === course && b.id === id)) throw new Error(`這個課程已經有「${id}」這個梯次代碼`);
 
   const b = { course, id, name };
   ['shortLabel', 'period', 'dates', 'dateText', 'examDate', 'fee', 'closedReason'].forEach(k => {

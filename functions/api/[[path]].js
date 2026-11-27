@@ -14,7 +14,7 @@
 
 // 後台網址（和 js/config.js 的 SHEETS_API_URL 相同；這串網址本來就是公開的）。
 // 之後若換了新的後台網址，請兩個地方一起改；或在 Cloudflare Pages 設定變數 APPS_SCRIPT_URL（優先使用）。
-const DEFAULT_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxLwDZHrheyHgyb1dN6ocY0x7qvTY5ra_400IftI2NBOBJNG3jq_1L6wKxxDU9Q6Tk/exec';
+const DEFAULT_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbygKB0EwGSVna_RYV_qWMFeh1G9NeU5JRwAJr6lCkgt3ug9i3sd_anp5DwmYIBHgxueDA/exec';
 
 const FRESH_MS = 30 * 1000;        // 30 秒內視為最新
 const MAX_BODY = 200000;           // 與後台上限一致

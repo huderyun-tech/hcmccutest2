@@ -35,4 +35,4 @@ const LINE_REDIRECT_SECONDS = 10;
    另一把「密鑰 (Secret Key)」不可放在這裡，要放在 Apps Script 的「指令碼屬性」，
    名稱 TURNSTILE_SECRET（詳見使用說明）。
    ========================================================================== */
-const TURNSTILE_SITE_KEY = '';
+const TURNSTILE_SITE_KEY = '0x4AAAAAAGVLTBWa1nblWYe0';

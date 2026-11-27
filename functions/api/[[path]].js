@@ -14,7 +14,7 @@
 
 // 後台網址（和 js/config.js 的 SHEETS_API_URL 相同；這串網址本來就是公開的）。
 // 之後若換了新的後台網址，請兩個地方一起改；或在 Cloudflare Pages 設定變數 APPS_SCRIPT_URL（優先使用）。
-const DEFAULT_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbygKB0EwGSVna_RYV_qWMFeh1G9NeU5JRwAJr6lCkgt3ug9i3sd_anp5DwmYIBHgxueDA/exec';
+const DEFAULT_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxLwDZHrheyHgyb1dN6ocY0x7qvTY5ra_400IftI2NBOBJNG3jq_1L6wKxxDU9Q6Tk/exec';
 
 const FRESH_MS = 30 * 1000;        // 30 秒內視為最新
 const MAX_BODY = 200000;           // 與後台上限一致
@@ -221,6 +221,40 @@ async function handleSync(context) {
 
 /* ---------------- 管理後台 API（一律要通過 Cloudflare Access 驗證） ---------------- */
 
+/* ---------------- 公告圖片（存在 KV，key = img:<id>，內容是圖片本身，metadata 記格式與大小） ---------------- */
+const IMG_MAX = 1500000;            // 單張上限約 1.5MB（後台上傳前會先壓縮，通常只有 200～400KB）
+const IMG_ID = /^[a-f0-9]{16}$/;
+function sniffImage(u8) {
+  if (u8.length > 12 && u8[0] === 0xFF && u8[1] === 0xD8 && u8[2] === 0xFF) return 'image/jpeg';
+  if (u8.length > 12 && u8[0] === 0x89 && u8[1] === 0x50 && u8[2] === 0x4E && u8[3] === 0x47) return 'image/png';
+  if (u8.length > 12 && String.fromCharCode(...u8.slice(0, 4)) === 'RIFF' && String.fromCharCode(...u8.slice(8, 12)) === 'WEBP') return 'image/webp';
+  return '';
+}
+async function handleImageGet(context, id) {
+  if (!IMG_ID.test(id) || !kv(context.env)) return new Response('Not found', { status: 404 });
+  const r = await kv(context.env).getWithMetadata('img:' + id, { type: 'arrayBuffer', cacheTtl: 3600 });
+  if (!r || !r.value) return new Response('Not found', { status: 404 });
+  const type = (r.metadata && r.metadata.type) || 'image/jpeg';
+  return new Response(r.value, { status: 200, headers: { 'Content-Type': type, 'Cache-Control': 'public, max-age=31536000, immutable', 'X-Content-Type-Options': 'nosniff' } });
+}
+function newsImageIds(news) {
+  const set = new Set();
+  (news || []).forEach(n => (n.images || []).forEach(i => set.add(i)));
+  return set;
+}
+async function imageUsage(env) {
+  let count = 0, bytes = 0, cursor;
+  try {
+    do {
+      const l = await kv(env).list({ prefix: 'img:', cursor });
+      (l.keys || []).forEach(k => { count++; bytes += (k.metadata && k.metadata.size) || 0; });
+      cursor = l.list_complete ? null : l.cursor;
+    } while (cursor);
+  } catch (e) { /* 忽略 */ }
+  return { count, bytes };
+}
+async function deleteImages(env, ids) { for (const id of ids) { try { await kv(env).delete('img:' + id); } catch (e) { /* 忽略 */ } } }
+
 async function loadAdminState(env) {
   const cfg = (await getDoc(env, KV_CONFIG, 1)) || emptyConfig();
   const counts = await getDoc(env, KV_COUNTS, 1);
@@ -250,9 +284,20 @@ async function handleAdmin(context, path) {
     }
     if (request.method === 'GET' && sub === 'state') {
       const { cfg, counts } = await loadAdminState(env);
-      return ok({ ...av(env, cfg, counts, now), email: auth.email, mode: await getMode(env, 1) });
+      return ok({ ...av(env, cfg, counts, now), email: auth.email, mode: await getMode(env, 1), images: await imageUsage(env) });
     }
     if (request.method !== 'POST') return fail('不支援的操作', 405);
+    if (sub === 'image') {                                      // 上傳一張公告圖片（內容就是圖片檔本身）
+      const buf = await request.arrayBuffer();
+      if (!buf.byteLength) return fail('沒有收到圖片');
+      if (buf.byteLength > IMG_MAX) return fail('圖片太大（上限約 1.5MB），請換小一點的圖');
+      const type = sniffImage(new Uint8Array(buf));
+      if (!type) return fail('只能上傳 JPG、PNG、WebP 圖片');
+      const idBytes = crypto.getRandomValues(new Uint8Array(8));
+      const id = Array.from(idBytes).map(b => b.toString(16).padStart(2, '0')).join('');
+      await kv(env).put('img:' + id, buf, { metadata: { type, size: buf.byteLength, by: auth.email, at: new Date().toISOString() } });
+      return ok({ id, url: '/api/img/' + id, size: buf.byteLength });
+    }
     let input;
     try { input = JSON.parse((await request.text()) || '{}'); } catch (e) { return fail('資料格式不正確', 400); }
     if (sub === 'mode') {
@@ -285,8 +330,20 @@ async function handleAdmin(context, path) {
       cfg.years = normalizeYears(input.years, cfg.years);
     } else if (sub === 'forms') {
       cfg.forms = normalizeForms(input.forms, cfg.forms);
+    } else if (sub === 'image-gc') {                           // 清除沒有被任何公告使用的圖片
+      const used = newsImageIds(cfg.news); let removed = 0, cursor;
+      do {
+        const l = await kv(env).list({ prefix: 'img:', cursor });
+        for (const k of (l.keys || [])) { const id = k.name.slice(4); if (!used.has(id)) { await kv(env).delete(k.name); removed++; } }
+        cursor = l.list_complete ? null : l.cursor;
+      } while (cursor);
+      return ok({ ...av(env, cfg, counts, now), email: auth.email, mode: await getMode(env, 1), images: await imageUsage(env), removed });
     } else if (sub === 'news') {
+      const before = newsImageIds(cfg.news);
       cfg.news = normalizeNews(input.news);
+      const after = newsImageIds(cfg.news);
+      await putDoc(env, KV_CONFIG, stamp(cfg, auth.email));
+      await deleteImages(env, [...before].filter(id => !after.has(id)));     // 公告移除的圖片一併刪掉
     } else if (sub === 'import') {
       if (hasConfig(cfg) && !input.overwrite) return fail('目前已經有設定了。若要用試算表的資料覆蓋，請勾選「覆蓋」。');
       const base = backendUrl(env);
@@ -305,7 +362,7 @@ async function handleAdmin(context, path) {
       return fail('不支援的操作', 404);
     }
     await putDoc(env, KV_CONFIG, stamp(cfg, auth.email));
-    return ok({ ...av(env, cfg, counts, now), email: auth.email, mode: await getMode(env, 1) });
+    return ok({ ...av(env, cfg, counts, now), email: auth.email, mode: await getMode(env, 1), images: await imageUsage(env) });
   } catch (e) {
     return fail(e && e.message ? e.message : '儲存失敗');
   }
@@ -316,6 +373,7 @@ export async function onRequest(context) {
   const path = new URL(request.url).pathname.replace(/\/+$/, '');
   try {
     if (path.startsWith('/api/admin')) return await handleAdmin(context, path);
+    if (request.method === 'GET' && path.startsWith('/api/img/')) return await handleImageGet(context, path.slice(9));
     if (request.method === 'POST' && path === '/api/sync') return await handleSync(context);
     if (request.method === 'GET' && path === '/api/batches') return (await handleBatchesNew(context)) || await handleBatches(context);
     if (request.method === 'POST' && path === '/api/submit') return (await handleSubmitNew(context)) || await handleSubmit(context);

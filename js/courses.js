@@ -52,7 +52,7 @@ const NEWS_CACHE_KEY = 'hcmccuNews';
 function applySiteNews(list, save = true) {
     if (!Array.isArray(list) || typeof siteNews === 'undefined' || !Array.isArray(siteNews)) return;
     const clean = list.filter(n => n && n.title && n.date).map(n => ({
-        date: String(n.date), title: String(n.title), image: n.image || '', content: String(n.content || ''),
+        date: String(n.date), title: String(n.title), image: n.image || '', images: Array.isArray(n.images) ? n.images : undefined, content: String(n.content || ''),
         link: n.link || undefined, linkText: n.linkText || undefined, anchor: n.anchor || undefined
     }));
     siteNews.splice(0, siteNews.length, ...clean);

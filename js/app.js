@@ -148,9 +148,16 @@ function openNewsDetail(index) {
     document.getElementById('newsModalContent').innerHTML = data.content;
 
     const imgContainer = document.getElementById('newsModalImageContainer');
+    imgContainer.querySelectorAll('img[data-extra]').forEach(el => el.remove());      // 清掉上一則公告的多張圖
     if (data.image) {
         document.getElementById('newsModalImage').src = data.image;
         imgContainer.style.display = 'block';
+        (Array.isArray(data.images) ? data.images.slice(1) : []).forEach(u => {         // 一則公告有多張圖時，依序往下排
+            const im = document.createElement('img');
+            im.className = 'modal-image'; im.alt = '公告圖片'; im.src = u; im.loading = 'lazy';
+            im.setAttribute('data-extra', '1'); im.style.marginTop = '10px';
+            imgContainer.appendChild(im);
+        });
     } else {
         imgContainer.style.display = 'none';
     }

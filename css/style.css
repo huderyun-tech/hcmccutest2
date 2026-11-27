@@ -351,7 +351,7 @@ header {
 .modal-date  { color: var(--text-light); font-size: 14px; text-align: left; margin-bottom: 5px; }
 .modal-title { text-align: left; color: var(--brand); margin-top: 0; }
 .modal-image-wrap { margin: 15px 0; display: none; }
-.modal-image { width: 100%; max-height: 300px; object-fit: cover; border-radius: 8px; }
+.modal-image { width: 100%; max-height: 420px; object-fit: contain; background: #f6f1ec; border-radius: 8px; }
 .modal-content-text { text-align: left; color: var(--text-muted); line-height: 1.6; }
 
 /* 11. 列印與響應式 ------------------------------------------------------- */

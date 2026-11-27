@@ -87,7 +87,9 @@ export function publicPayload(config, countsDoc, nowMs) {
   FORM_CODES.forEach(code => { const f = (config.forms || {})[code]; if (f) forms[code] = { open: f.open !== false, title: f.title || '', message: f.message || '', linkText: f.linkText || '', linkUrl: f.linkUrl || '' }; });
   const out = { ok: true, updatedAt: config.updatedAt || '', courses, years: config.years || {}, forms };
   const news = (config.news || []).filter(n => n.show !== false).map(n => {
-    const item = { date: n.date, title: n.title, image: n.image || '', content: String(n.content || '').replace(/\r?\n/g, '<br>') };
+    const imgs = (n.images || []).map(id => '/api/img/' + id);
+    const item = { date: n.date, title: n.title, image: imgs[0] || n.image || '', content: String(n.content || '').replace(/\r?\n/g, '<br>') };
+    if (imgs.length > 1) item.images = imgs;
     if (n.link) { item.link = n.link; if (n.linkText) item.linkText = n.linkText; if (n.anchor) item.anchor = n.anchor; }
     return item;
   });
@@ -196,7 +198,8 @@ export function normalizeNews(list) {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new Error(`「${title}」的日期格式要是 2026-12-01`);
     const link = String(n.link || '').trim();
     if (link && !(/^\/[A-Za-z0-9\-\/]*$/.test(link) || /^https:\/\//i.test(link))) throw new Error(`「${title}」的前往頁面要是 /course-nanny-gov 這種站內路徑，或 https:// 開頭的網址`);
-    const item = { date, title, content: String(n.content || '').slice(0, 5000), image: String(n.image || '').trim(), show: n.show !== false };
+    const images = Array.isArray(n.images) ? n.images.map(x => String(x)).filter(x => /^[a-f0-9]{16}$/.test(x)).slice(0, 6) : [];
+    const item = { date, title, content: String(n.content || '').slice(0, 5000), image: String(n.image || '').trim(), images, show: n.show !== false };
     if (link) { item.link = link; if (n.linkText) item.linkText = String(n.linkText).trim(); if (n.anchor) item.anchor = String(n.anchor).trim(); }
     return item;
   });

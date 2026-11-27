@@ -57,6 +57,7 @@ td.num{white-space:nowrap}
 .switch input{width:18px;height:18px;accent-color:var(--brand)}
 .newscard{border:1px solid var(--line);border-radius:10px;padding:12px;margin-bottom:12px;background:var(--bg)}
 .loading{padding:40px;text-align:center;color:var(--sub)}
+.span2{grid-column:span 2}@media (max-width:760px){.span2{grid-column:auto}}
 .sec{display:none}.sec.on{display:block}
 details{margin:6px 0}
 summary{cursor:pointer;color:var(--brand);font-weight:600}
@@ -68,6 +69,7 @@ summary{cursor:pointer;color:var(--brand);font-weight:600}
   <h1>新竹市月子照顧服務人員職業工會｜報名管理後台</h1>
   <button class="small" id="btnReload" type="button">重新整理</button>
   <a class="btn small" id="sheetLink" href="#" target="_blank" rel="noopener" style="text-decoration:none">開啟試算表</a>
+  <a class="btn small" id="siteLink" href="/" target="_blank" rel="noopener" style="text-decoration:none">開啟網站</a>
   <span class="who" id="who"></span>
 </header>
 <nav id="tabs">
@@ -207,6 +209,27 @@ summary{cursor:pointer;color:var(--brand);font-weight:600}
   function fromLocalInput(s) { return s ? s.replace('T', ' ') : ''; }
   function field(label, inner, hint) { return '<div><label class="f">' + label + '</label>' + inner + (hint ? '<div class="hint" style="margin:3px 0 0">' + hint + '</div>' : '') + '</div>'; }
 
+  /* ---------- 日期＋時間（日期、時、分分開選，下方即時顯示選到的結果） ---------- */
+  function splitDt(s) { var m = String(s || '').match(/^(\d{4}-\d{2}-\d{2})[ T](\d{2}):(\d{2})/); return m ? { d: m[1], h: m[2], m: m[3] } : { d: '', h: '', m: '' }; }
+  function dtField(label, id, value, defH, defM, hint) {
+    var v = splitDt(value), h = [], m = [], i;
+    var hh = v.h || defH, mm = v.m || defM;
+    for (i = 0; i < 24; i++) { var x = ('0' + i).slice(-2); h.push('<option' + (x === hh ? ' selected' : '') + '>' + x + '</option>'); }
+    var mins = ['00', '05', '10', '15', '20', '25', '30', '35', '40', '45', '50', '55', '59']; if (mins.indexOf(mm) < 0) mins.push(mm); mins.sort();
+    mins.forEach(function (x) { m.push('<option' + (x === mm ? ' selected' : '') + '>' + x + '</option>'); });
+    return '<div class="span2"><label class="f">' + label + '</label><div class="row" style="gap:6px;flex-wrap:nowrap;align-items:center">' +
+      '<input type="date" id="' + id + '_d" value="' + esc(v.d) + '" style="flex:1.6;min-width:0"><select id="' + id + '_h" style="flex:0 0 74px;width:74px">' + h.join('') + '</select>:<select id="' + id + '_m" style="flex:0 0 74px;width:74px">' + m.join('') + '</select>' +
+      '<button type="button" class="small" id="' + id + '_x">清除</button></div>' +
+      '<div class="hint" id="' + id + '_p" style="margin:4px 0 0"></div>' + (hint ? '<div class="hint" style="margin:2px 0 0">' + hint + '</div>' : '') + '</div>';
+  }
+  function getDt(id) { var d = $(id + '_d').value; return d ? d + ' ' + $(id + '_h').value + ':' + $(id + '_m').value : ''; }
+  function bindDt(id, emptyText) {
+    function paint() { var v = getDt(id); $(id + '_p').innerHTML = v ? '<b style="color:var(--ok,#2e7d32)">✓ 已選：' + esc(v) + '（台灣時間）</b>' : esc(emptyText); }
+    ['_d', '_h', '_m'].forEach(function (k) { $(id + k).addEventListener('input', paint); $(id + k).addEventListener('change', paint); });
+    $(id + '_x').onclick = function () { $(id + '_d').value = ''; paint(); };
+    paint();
+  }
+
   function editBatch(row) {
     var b = row ? S.batches.filter(function (x) { return x.row === row; })[0] : null;
     var isNew = !b;
@@ -216,7 +239,7 @@ summary{cursor:pointer;color:var(--brand);font-weight:600}
       (isNew ? '' : '<div class="note" style="background:var(--mutebg);color:var(--ink)">目前：' + esc(b.statusText) + '</div>') +
       '<div class="grid">' +
       field('課程', '<select id="e_course"' + (isNew ? '' : ' disabled') + '>' + courseOpts + '</select>') +
-      field('梯次代碼 *', '<input type="text" id="e_id" value="' + esc(b.id) + '"' + (isNew ? '' : ' disabled') + '>', isNew ? '例如 116SKILL02；建立後不能修改（報名資料靠它對應）' : '建立後不能修改') +
+      field('梯次代碼 *', '<input type="text" id="e_id" value="' + esc(b.id) + '">', '例如 116SKILL02。報名資料靠這個代碼對應：改成新代碼後，人數從 0 重新計算（舊代碼的報名資料仍留在試算表）') + '<div class="span2"><div class="note" id="e_id_note" style="display:none;margin:0"></div></div>' +
       field('梯次名稱 *', '<input type="text" id="e_name" value="' + esc(b.name) + '">') +
       field('簡短說明', '<input type="text" id="e_short" value="' + esc(b.shortLabel) + '">', '報名表選項上顯示的短文字') +
       field('訓練期間', '<input type="text" id="e_period" value="' + esc(b.period) + '">') +
@@ -224,8 +247,8 @@ summary{cursor:pointer;color:var(--brand);font-weight:600}
       field('上課日期（文字）', '<input type="text" id="e_dateText" value="' + esc(b.dateText) + '">') +
       field('徵試日', '<input type="text" id="e_exam" value="' + esc(b.examDate) + '">') +
       field('費用', '<input type="text" id="e_fee" value="' + esc(b.fee) + '">', '填數字即可，例如 9500；9 折金額網頁自動換算') +
-      field('報名開始', '<input type="datetime-local" id="e_start" value="' + esc(toLocalInput(b.regStart)) + '">', '不填＝即日起') +
-      field('報名截止', '<input type="datetime-local" id="e_end" value="' + esc(toLocalInput(b.regEnd)) + '">', '只選日期沒選時間時，視為 23:59 截止') +
+      dtField('報名開始', 'e_start', b.regStart, '00', '00', '日期留空＝即日起') +
+      dtField('報名截止', 'e_end', b.regEnd, '23', '59', '預設 23:59 截止；日期留空＝不設截止') +
       field('總名額', '<input type="number" min="0" id="e_total" value="' + esc(b.totalQuota) + '">', '填了就自動用「已報名人數」算出尚餘名額；不填＝不限（或手動填尚餘名額）') +
       field('候補名額', '<input type="number" min="0" id="e_wait" value="' + esc(b.waitlistQuota) + '">', '額滿後最多收幾位候補；空白或 0＝不開放候補') +
       field('尚餘名額（手動）', '<input type="number" min="0" id="e_quota" value="' + esc(b.autoQuota ? '' : b.quota) + '">', '只在「總名額」空白時才使用') +
@@ -234,22 +257,46 @@ summary{cursor:pointer;color:var(--brand);font-weight:600}
       '<label class="switch"><input type="checkbox" id="e_show"' + (b.show ? ' checked' : '') + '> 顯示在網站</label></div>' +
       '<div style="margin-top:10px">' + field('關閉原因（手動關閉時顯示給民眾）', '<input type="text" id="e_reason" value="' + esc(b.closedReason) + '">') + '</div>' +
       '<div class="foot">' + (isNew ? '' : '<button type="button" id="dDel" style="margin-right:auto;color:var(--bad)">刪除梯次</button>') + '<button type="button" id="dNo">取消</button><button type="button" class="primary" id="dYes">儲存</button></div>');
+    bindDt('e_start', '未設定（即日起開放）'); bindDt('e_end', '未設定（不設截止時間）');
+    function codeNote() {
+      var id = $('e_id').value.trim(), course = $('e_course').value, n = $('e_id_note'), cc = (S.codeCounts || {})[course + '|' + id];
+      var changed = !isNew && id !== b.id, msg = '';
+      if (changed) {
+        msg += '你正在把代碼「' + esc(b.id) + '」改成「' + esc(id) + '」。';
+        if ((b.enrolled || 0) + (b.waitlistCount || 0) > 0) msg += '舊代碼已有 <b>' + b.enrolled + '</b> 位正取、<b>' + b.waitlistCount + '</b> 位候補，他們會留在試算表，但<b>不再計入這個梯次</b>（適合「這一期結束、同一列改成下一期」；若這期還在報名中請不要改）。';
+        else msg += '舊代碼沒有報名資料，可以放心改。';
+        if ((b.enrolled || 0) + (b.waitlistCount || 0) > 0) msg += '<br><label class="switch"><input type="checkbox" id="e_id_ok"> 我了解，仍要更改代碼</label>';
+      }
+      if (id && (changed || isNew) && cc && (cc.main + cc.wait) > 0) msg += (msg ? '<br>' : '') + '⚠ 試算表裡已有代碼「' + esc(id) + '」的報名資料（正取 ' + cc.main + '、候補 ' + cc.wait + '），改用這個代碼後會直接計入。';
+      n.style.display = msg ? 'block' : 'none'; n.innerHTML = msg;
+    }
+    $('e_id').addEventListener('input', codeNote); $('e_course').addEventListener('change', codeNote); codeNote();
     $('dNo').onclick = closeDialog;
     if ($('dDel')) $('dDel').onclick = async function () {
       if (!(await askConfirm('確定刪除梯次「' + b.id + '」？已有人報名的梯次不能刪除，請改用「顯示在網站」關閉。', '刪除'))) return;
       var st = await act(null, function () { return call('adminDeleteBatch', { row: b.row }); }, '已刪除');
-      if (st) { S = st; renderAll(); }
+      if (st) { closeDialog(); S = st; markSaved('已刪除梯次「' + b.id + '」', []); renderAll(); }
     };
     $('dYes').onclick = async function () {
       var payload = {
         row: b.row || '', course: $('e_course').value, id: $('e_id').value.trim(), name: $('e_name').value, shortLabel: $('e_short').value,
         period: $('e_period').value, dates: $('e_dates').value, dateText: $('e_dateText').value, examDate: $('e_exam').value, fee: $('e_fee').value,
-        regStart: fromLocalInput($('e_start').value), regEnd: fromLocalInput($('e_end').value),
+        regStart: getDt('e_start'), regEnd: getDt('e_end'),
         totalQuota: $('e_total').value, waitlistQuota: $('e_wait').value, quota: $('e_quota').value,
         forceClosed: $('e_closed').checked, closedReason: $('e_reason').value, show: $('e_show').checked
       };
+      if (!isNew && payload.id !== b.id && ((b.enrolled || 0) + (b.waitlistCount || 0)) > 0 && !($('e_id_ok') && $('e_id_ok').checked)) { toast('舊代碼已有報名資料，請先勾選「我了解，仍要更改代碼」', true); return; }
       var st = await act($('dYes'), function () { return call('adminSaveBatch', payload); }, '已儲存，網站約 1 分鐘內更新');
-      if (st) { S = st; closeDialog(); renderAll(); }
+      if (st) {
+        S = st; closeDialog();
+        var sv = st.batches.filter(function (x) { return x.course === payload.course && x.id === payload.id; })[0] || {};
+        markSaved('梯次「' + (sv.id || payload.id) + '」' + (sv.name || ''), [
+          '報名期間：' + (sv.regStart || '即日起') + ' ～ ' + (sv.regEnd || '不設截止'),
+          '總名額：' + (sv.totalQuota === '' || sv.totalQuota === undefined ? '不限' : sv.totalQuota) + '｜候補名額：' + (sv.waitlistQuota === '' || sv.waitlistQuota === undefined ? '無' : sv.waitlistQuota) + '｜費用：' + (sv.fee || '—'),
+          '目前狀態：' + (sv.statusText || '')
+        ]);
+        renderAll();
+      }
     };
   }
 
@@ -297,7 +344,7 @@ summary{cursor:pointer;color:var(--brand);font-weight:600}
     $('tab-settings').innerHTML = h;
     $('btnYears').onclick = async function () {
       var list = Array.prototype.map.call($('tab-settings').querySelectorAll('[data-year]'), function (i) { return { course: i.dataset.year, year: i.value }; });
-      var st = await act(this, function () { return call('adminSaveYears', list); }, '年度已儲存');
+      var st = await act(this, function () { return call('adminSaveYears', list); }, '年度已儲存'); if (st) markSaved('年度設定', st.years.map(function (y) { return y.name + '：' + (y.year ? y.year + ' 年度' : '未設定'); }));
       if (st) { S = st; renderAll(); }
     };
     var toggleClosed = function (card) { var open = card.querySelector('[data-f=open]').checked; card.querySelectorAll('[data-closed]').forEach(function (x) { x.style.opacity = open ? '.45' : '1'; }); };
@@ -307,7 +354,7 @@ summary{cursor:pointer;color:var(--brand);font-weight:600}
         var g = function (k) { return card.querySelector('[data-f=' + k + ']'); };
         return { code: card.dataset.form, open: g('open').checked, title: g('title').value, message: g('message').value, linkText: g('linkText').value, linkUrl: g('linkUrl').value };
       });
-      var st = await act(this, function () { return call('adminSaveForms', list); }, '表單開關已儲存');
+      var st = await act(this, function () { return call('adminSaveForms', list); }, '表單開關已儲存'); if (st) markSaved('表單開關', st.forms.map(function (f) { return f.name + '：' + (f.open ? '開放' : '關閉'); }));
       if (st) { S = st; renderAll(); }
     };
   }
@@ -339,7 +386,7 @@ summary{cursor:pointer;color:var(--brand);font-weight:600}
     $('btnNewsSave').onclick = async function () {
       syncNews();
       var list = NEWS.map(function (n) { return { date: n.date, title: n.title, content: n.content, image: n.image, link: n.link, linkText: n.linkText, anchor: n.link ? n.anchor : '', show: n.show }; });
-      var st = await act(this, function () { return call('adminSaveNews', list); }, '公告已儲存，網站很快會更新');
+      var st = await act(this, function () { return call('adminSaveNews', list); }, '公告已儲存，網站很快會更新'); if (st) markSaved('最新公告', ['共 ' + st.news.length + ' 則（顯示中 ' + st.news.filter(function (n) { return n.show; }).length + ' 則）']);
       if (st) { S = st; NEWS = JSON.parse(JSON.stringify(S.news)); renderNews(); }
     };
   }
@@ -383,12 +430,29 @@ summary{cursor:pointer;color:var(--brand);font-weight:600}
     };
   }
 
+  /* ---------- 最近一次儲存的確認（儲存後留在畫面上，確認寫入的是什麼） ---------- */
+  var LAST = null;
+  function pad2(n) { return ('0' + n).slice(-2); }
+  function markSaved(title, lines) { var d = new Date(); LAST = { at: pad2(d.getHours()) + ':' + pad2(d.getMinutes()) + ':' + pad2(d.getSeconds()), title: title, lines: lines || [] }; }
+  function renderSaved() {
+    var el = $('saveBar');
+    if (!LAST) { if (el) el.remove(); return; }
+    if (!el) { el = document.createElement('div'); el.id = 'saveBar'; var mb = $('modeBar'); mb.parentNode.insertBefore(el, mb.nextSibling); }
+    el.className = 'card';
+    el.style.cssText = 'border-color:#2e7d32;background:#f1f8f2;position:relative';
+    el.innerHTML = '<div style="font-weight:700;color:#2e7d32">✓ ' + esc(LAST.at) + ' 已儲存成功：' + esc(LAST.title) + '</div>' +
+      LAST.lines.map(function (l) { return '<div class="hint" style="margin:3px 0 0;color:var(--ink)">' + esc(l) + '</div>'; }).join('') +
+      '<div class="hint" style="margin:6px 0 0">網站約 1 分鐘內更新，可按右上角「開啟網站」確認。</div>' +
+      '<button type="button" class="small" id="saveBarX" style="position:absolute;right:10px;top:10px">關閉</button>';
+    $('saveBarX').onclick = function () { LAST = null; renderSaved(); };
+  }
+
   /* ---------- 總繪製 ---------- */
   function renderAll() {
     $('loading').style.display = 'none';
     $('who').textContent = '登入：' + S.email;
-    $('sheetLink').href = S.sheetUrl || '#'; $('sheetLink').style.display = S.sheetUrl ? '' : 'none';
-    renderBatches(); renderSettings(); renderHelp(); renderMode();
+    $('sheetLink').href = S.sheetUrl || '#'; $('sheetLink').onclick = function (e) { if (!S.sheetUrl) { e.preventDefault(); toast('還沒收到試算表網址：請在試算表選單「報名後台 → 啟用 Cloudflare 名額同步」執行一次', true); } };
+    renderBatches(); renderSettings(); renderHelp(); renderMode(); renderSaved();
     if (!S.initialized) { $('tab-batches').insertAdjacentHTML('afterbegin', '<div class="card" style="border-color:var(--brand)"><h2>第一次使用：匯入現有設定</h2><p class="hint">目前還沒有設定。按下按鈕，會把 Google 試算表上現有的課程梯次、年度、表單開關、公告複製過來（只需要做一次）。</p><button class="primary" id="btnImport" type="button">從試算表匯入</button></div>'); $('btnImport').onclick = async function () { var st = await act(this, function () { return call('adminImport', {}); }, '已匯入'); if (st) { S = st; NEWS = JSON.parse(JSON.stringify(S.news || [])); renderAll(); } }; }
     if (!NEWS.length || !document.querySelector('#tab-news [data-n]')) { NEWS = JSON.parse(JSON.stringify(S.news || [])); }
     renderNews();

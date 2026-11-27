@@ -74,7 +74,6 @@ summary{cursor:pointer;color:var(--brand);font-weight:600}
 </header>
 <nav id="tabs">
   <button data-tab="batches" class="on" type="button">課程與名額</button>
-  <button data-tab="regs" type="button">報名人數</button>
   <button data-tab="settings" type="button">年度與表單</button>
   <button data-tab="news" type="button">最新公告</button>
   <button data-tab="help" type="button">使用說明</button>
@@ -84,7 +83,6 @@ summary{cursor:pointer;color:var(--brand);font-weight:600}
   <div id="fatal" class="card" style="display:none;border-color:var(--bad)"></div>
 
   <section id="tab-batches" class="sec on"></section>
-  <section id="tab-regs" class="sec"></section>
   <section id="tab-settings" class="sec"></section>
   <section id="tab-news" class="sec"></section>
   <section id="tab-help" class="sec"></section>
@@ -163,7 +161,6 @@ summary{cursor:pointer;color:var(--brand);font-weight:600}
   function showTab(name) {
     document.querySelectorAll('#tabs button').forEach(function (x) { x.classList.toggle('on', x.dataset.tab === name); });
     document.querySelectorAll('.sec').forEach(function (x) { x.classList.toggle('on', x.id === 'tab-' + name); });
-    if (name === 'regs') renderRegs();
   }
 
   /* ---------- 共用：課程名稱、狀態徽章 ---------- */
@@ -184,10 +181,10 @@ summary{cursor:pointer;color:var(--brand);font-weight:600}
 
   /* ---------- 課程與名額 ---------- */
   function renderBatches() {
-    var html = '<div class="card"><div class="row"><div><h2>課程梯次與名額</h2><p class="hint">改完按「儲存」，網站約 1 分鐘內更新（有人報名時人數會立刻更新）。「正取」是已報名人數／總名額，額滿後可開放候補。</p></div><button class="primary" id="btnAdd" type="button" style="margin-left:auto">＋ 新增梯次</button></div></div>';
+    var html = '<div class="card"><div class="row"><div><h2>課程梯次與名額</h2><p class="hint">改完按「儲存」，網站約 1 分鐘內更新（有人報名時人數會立刻更新）。「正取」是已報名人數／總名額，額滿後可開放候補。要看名單、取消報名（「是否取消」選「是」，名額約 1 分鐘內釋出）、候補轉正取、寫備註，請按各課程旁的「開啟試算表分頁」。' + (S.countsAt ? '<br>人數最後同步：' + esc(S.countsAt.replace('T', ' ').slice(0, 19)) + '（UTC）' : '<br><b style="color:var(--bad)">尚未收到試算表的同步資料，請完成使用說明裡的「啟用名額同步」。</b>') + '</p></div><button class="primary" id="btnAdd" type="button" style="margin-left:auto">＋ 新增梯次</button></div></div>';
     COURSES.forEach(function (c) {
       var list = S.batches.filter(function (b) { return b.course === c; });
-      html += '<div class="coursehead">' + esc(cname(c)) + '</div><div class="card tablewrap"><table><thead><tr><th>梯次</th><th>報名期間</th><th>費用</th><th>正取</th><th>候補</th><th>狀態</th><th></th></tr></thead><tbody>';
+      html += '<div class="coursehead">' + esc(cname(c)) + (sheetTabUrl(c) ? '　<a class="btn small" style="text-decoration:none" target="_blank" rel="noopener" href="' + esc(sheetTabUrl(c)) + '">開啟試算表分頁</a>' : '') + '</div><div class="card tablewrap"><table><thead><tr><th>梯次</th><th>報名期間</th><th>費用</th><th>正取</th><th>候補</th><th>狀態</th><th></th></tr></thead><tbody>';
       if (!list.length) html += '<tr><td colspan="7" style="color:var(--sub)">目前沒有梯次</td></tr>';
       list.forEach(function (b) {
         html += '<tr><td><b>' + esc(b.id) + '</b><br><span style="color:var(--sub);font-size:13px">' + esc(b.name) + '</span></td>' +
@@ -200,6 +197,11 @@ summary{cursor:pointer;color:var(--brand);font-weight:600}
       });
       html += '</tbody></table></div>';
     });
+    var other = [['apply', '入會申請'], ['labor', '勞健保異動'], ['service', '月子服務需求']].filter(function (x) { return sheetTabUrl(x[0]); });
+    if (other.length) html += '<div class="card"><h2>其他表單的報名資料</h2><div class="row">' + other.map(function (x) { return '<a class="btn" style="text-decoration:none" target="_blank" rel="noopener" href="' + esc(sheetTabUrl(x[0])) + '">' + esc(x[1]) + '</a>'; }).join('') + '</div></div>';
+    var known = {}; S.batches.forEach(function (b) { known[b.course + '|' + b.id] = 1; });
+    var old = Object.keys(S.codeCounts || {}).filter(function (k) { return !known[k]; }).sort();
+    if (old.length) html += '<div class="card"><h2>試算表裡已不在設定中的舊梯次代碼</h2><p class="hint">這些代碼在試算表有報名資料，但上面已沒有對應的梯次（例如已結束後刪除）。資料不受影響，不需要處理。</p><div class="row">' + old.map(function (k) { var p = k.split('|'), c = S.codeCounts[k], n = (c && typeof c === 'object') ? (c.main || 0) + (c.wait ? '＋候補' + c.wait : '') : c; return '<span class="badge">' + esc(cname(p[0])) + ' ' + esc(p[1]) + '：' + esc(n) + ' 人</span>'; }).join('') + '</div></div>';
     $('tab-batches').innerHTML = html;
     $('btnAdd').onclick = function () { editBatch(null); };
     $('tab-batches').querySelectorAll('[data-edit]').forEach(function (b) { b.onclick = function () { editBatch(b.dataset.edit); }; });
@@ -300,32 +302,13 @@ summary{cursor:pointer;color:var(--brand);font-weight:600}
     };
   }
 
-  /* ---------- 報名人數（名單與處理回到 Google 試算表） ---------- */
+  /* ---------- 試算表分頁連結 ---------- */
   function sheetTabUrl(key) {
     var base = String(S.sheetUrl || '').split('#')[0];
     if (!base) return '';
     var g = S.sheetGids && S.sheetGids[key];
     return g ? base + '#gid=' + g.gid : base;
   }
-  function renderRegs() {
-    if (!S) return;
-    var h = '<div class="card"><h2>報名人數</h2><p class="hint">報名資料都存在 Google 試算表。要看名單、取消報名、候補轉正取、寫備註，請按「開啟試算表分頁」。取消後（是否取消選「是」）名額約 1 分鐘內自動釋出。' +
-      (S.countsAt ? '<br>人數最後同步：' + esc(S.countsAt.replace('T', ' ').slice(0, 19)) + '（UTC）' : '<br><b style="color:var(--bad)">尚未收到試算表的同步資料，請完成使用說明裡的「啟用名額同步」。</b>') + '</p></div>';
-    COURSES.forEach(function (c) {
-      var list = S.batches.filter(function (b) { return b.course === c; });
-      h += '<div class="coursehead">' + esc(cname(c)) + (sheetTabUrl(c) ? '　<a class="btn small" style="text-decoration:none" target="_blank" rel="noopener" href="' + esc(sheetTabUrl(c)) + '">開啟試算表分頁</a>' : '') + '</div>' +
-        '<div class="card tablewrap"><table><thead><tr><th>梯次</th><th>正取人數</th><th>候補人數</th><th>狀態</th></tr></thead><tbody>';
-      if (!list.length) h += '<tr><td colspan="4" style="color:var(--sub)">目前沒有梯次</td></tr>';
-      list.forEach(function (b) {
-        h += '<tr><td><b>' + esc(b.id) + '</b><br><span style="color:var(--sub);font-size:13px">' + esc(b.name) + '</span></td><td class="num">' + esc(quotaText(b)) + '</td><td class="num">' + (b.waitlistQuota === '' || b.waitlistQuota === 0 ? b.waitlistCount : b.waitlistCount + ' / ' + b.waitlistQuota) + '</td><td>' + statusBadge(b) + '</td></tr>';
-      });
-      h += '</tbody></table></div>';
-    });
-    var other = [['apply', '入會申請'], ['labor', '勞健保異動'], ['service', '月子服務需求']].filter(function (x) { return sheetTabUrl(x[0]); });
-    if (other.length) h += '<div class="card"><h2>其他表單</h2><div class="row">' + other.map(function (x) { return '<a class="btn" style="text-decoration:none" target="_blank" rel="noopener" href="' + esc(sheetTabUrl(x[0])) + '">' + esc(x[1]) + '</a>'; }).join('') + '</div></div>';
-    $('tab-regs').innerHTML = h;
-  }
-
   /* ---------- 年度與表單 ---------- */
   function renderSettings() {
     var h = '<div class="card"><h2>各課程年度</h2><p class="hint">填民國年（例如 116）。網頁上的標題、表單、按鈕、成功訊息裡的年度都會一起更新。</p><div class="grid">' +
@@ -406,7 +389,7 @@ summary{cursor:pointer;color:var(--brand);font-weight:600}
     $('tab-help').innerHTML = '<div class="card"><h2>使用說明</h2>' +
       '<details open><summary>改課程、名額、費用</summary><p>到「課程與名額」按「編輯」。費用填數字即可，網站各報名表與 9 折金額會自動同步。總名額填了之後，尚餘名額會依報名人數自動計算。儲存後網站約 1 分鐘內更新。</p></details>' +
       '<details><summary>候補怎麼用</summary><p>在梯次的「候補名額」填數字（例如 10），額滿後網站就會開放登記候補。有人取消時名額會自動釋出，由工作人員通知候補者；候補轉正取請到試算表把該筆「報名類別」改成「正取」。</p></details>' +
-      '<details><summary>查看與處理報名名單</summary><p>到「報名人數」分頁，按該課程的「開啟試算表分頁」，會直接開到 Google 試算表對應的分頁。取消報名＝把「是否取消」選成「是」，名額約 1 分鐘內釋出。</p></details>' +
+      '<details><summary>查看與處理報名名單</summary><p>到「課程與名額」，按該課程旁的「開啟試算表分頁」，會直接開到 Google 試算表對應的分頁。取消報名＝把「是否取消」選成「是」，名額約 1 分鐘內釋出。</p></details>' +
       '<details><summary>啟用名額同步（第一次必做）</summary><p>在 Google 試算表選單「報名後台 → 啟用 Cloudflare 名額同步（每分鐘）」。之後試算表上的報名人數會每分鐘自動同步到這裡與網站。</p></details>' +
       '<details><summary>誰可以進入這個後台</summary><p>由 Cloudflare Access 決定（Zero Trust → Access → Applications 裡的管理員信箱名單），登入時會寄驗證碼或用 Google 登入。要增加管理員請到那裡新增信箱。</p></details>' +
       '<details><summary>資料存在哪裡</summary><p>課程設定、年度、表單開關、公告存在 Cloudflare；報名資料存在 Google 試算表。課程梯次分頁上的內容不再是設定來源，請在這裡修改。</p></details></div>';
@@ -456,7 +439,6 @@ summary{cursor:pointer;color:var(--brand);font-weight:600}
     if (!S.initialized) { $('tab-batches').insertAdjacentHTML('afterbegin', '<div class="card" style="border-color:var(--brand)"><h2>第一次使用：匯入現有設定</h2><p class="hint">目前還沒有設定。按下按鈕，會把 Google 試算表上現有的課程梯次、年度、表單開關、公告複製過來（只需要做一次）。</p><button class="primary" id="btnImport" type="button">從試算表匯入</button></div>'); $('btnImport').onclick = async function () { var st = await act(this, function () { return call('adminImport', {}); }, '已匯入'); if (st) { S = st; NEWS = JSON.parse(JSON.stringify(S.news || [])); renderAll(); } }; }
     if (!NEWS.length || !document.querySelector('#tab-news [data-n]')) { NEWS = JSON.parse(JSON.stringify(S.news || [])); }
     renderNews();
-    if ($('tab-regs').classList.contains('on')) renderRegs();
   }
 
   async function load() {

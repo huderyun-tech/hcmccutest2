@@ -129,6 +129,23 @@ function findField(fields, key) {
   return '';
 }
 
+/* Cloudflare Turnstile 驗證（在 Cloudflare 端做，比轉到 Apps Script 再驗快很多）。密鑰放在 Pages 變數 TURNSTILE_SECRET */
+async function verifyTurnstileEdge(env, token, ip) {
+  if (!token || String(token).length > 4096) return { ok: false, error: '請先勾選「我不是機器人」驗證後再送出' };
+  try {
+    const form = new FormData();
+    form.append('secret', String(env.TURNSTILE_SECRET).trim());
+    form.append('response', String(token));
+    if (ip) form.append('remoteip', ip);
+    const res = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', { method: 'POST', body: form });
+    const r = await res.json();
+    if (r && r.success) return { ok: true };
+    return { ok: false, error: '機器人驗證未通過或已逾時，請重新勾選驗證後再送出' };
+  } catch (e) {
+    return { ok: false, error: '驗證服務暫時無法連線，請稍後再試' };
+  }
+}
+
 async function handleSubmitNew(context) {
   const { env, request } = context;
   if ((await getMode(env)) === 'sheet') return null;
@@ -138,8 +155,23 @@ async function handleSubmitNew(context) {
   if (!body || body.length > MAX_BODY) return json(JSON.stringify({ ok: false, error: '資料格式不正確或太大' }));
   let data;
   try { data = JSON.parse(body); } catch (e) { return json(JSON.stringify({ ok: false, error: '資料格式不正確' })); }
+  if (!data || typeof data !== 'object') return json(JSON.stringify({ ok: false, error: '資料格式不正確' }));
   const f = (cfg.forms || {})[data.formType];
   if (f && f.open === false) return json(JSON.stringify({ ok: false, error: f.message || '此表單目前暫停受理' }));
+
+  // 防機器人（在 Cloudflare 這一關就擋掉，不會打擾到試算表）
+  if (data.hp || (Number(data.elapsedMs) || 0) < 3000) {
+    return json(JSON.stringify({ ok: true, receipt: 'X-' + String(data.submissionId || 'BOT').slice(0, 6).toUpperCase() }));   // 假裝成功，不記錄
+  }
+  let humanChecked = false;
+  if (env.TURNSTILE_SECRET) {
+    const t = await verifyTurnstileEdge(env, data.cfToken, request.headers.get('CF-Connecting-IP'));
+    if (!t.ok) return json(JSON.stringify({ ok: false, error: t.error }));
+    humanChecked = true;
+  }
+  data.humanChecked = humanChecked;                           // 一律由這裡決定，網站端送來的不算數
+  delete data.cfToken;
+  const bodyOut = JSON.stringify(data);
 
   let batch = null;
   const batchId = findField(data.fields, '梯次代碼');
@@ -148,7 +180,7 @@ async function handleSubmitNew(context) {
     if (b) batch = { id: b.id, show: b.show !== false, forceClosed: !!b.forceClosed, closedReason: b.closedReason || '', regEnd: b.regEnd || '', totalQuota: typeof b.totalQuota === 'number' ? b.totalQuota : null, quota: typeof b.quota === 'number' ? b.quota : null, waitlistQuota: typeof b.waitlistQuota === 'number' ? b.waitlistQuota : 0 };
   }
   const ts = String(Date.now());
-  const inner = JSON.stringify({ payload: body, batch });
+  const inner = JSON.stringify({ payload: bodyOut, batch });
   const sig = await hmacHex(`${ts}.${inner}`, env.SYNC_SECRET);
   let text, result;
   try {
@@ -196,6 +228,8 @@ async function loadAdminState(env) {
 }
 function stamp(cfg, email) { cfg.updatedAt = new Date().toISOString(); cfg.updatedBy = email; return cfg; }
 
+function av(env, cfg, counts, now) { const v = adminView(cfg, counts, now); if (!v.sheetUrl && env.SHEET_URL) v.sheetUrl = String(env.SHEET_URL); return v; }   // 還沒收到同步時，可用變數 SHEET_URL 指定試算表網址
+
 async function handleAdmin(context, path) {
   const { env, request } = context;
   const auth = await requireAdmin(request, env);
@@ -216,7 +250,7 @@ async function handleAdmin(context, path) {
     }
     if (request.method === 'GET' && sub === 'state') {
       const { cfg, counts } = await loadAdminState(env);
-      return ok({ ...adminView(cfg, counts, now), email: auth.email, mode: await getMode(env, 1) });
+      return ok({ ...av(env, cfg, counts, now), email: auth.email, mode: await getMode(env, 1) });
     }
     if (request.method !== 'POST') return fail('不支援的操作', 405);
     let input;
@@ -229,7 +263,7 @@ async function handleAdmin(context, path) {
       }
       await putDoc(env, 'mode', { source: src, at: new Date().toISOString(), by: auth.email });
       const st0 = await loadAdminState(env);
-      return ok({ ...adminView(st0.cfg, st0.counts, now), email: auth.email, mode: src });
+      return ok({ ...av(env, st0.cfg, st0.counts, now), email: auth.email, mode: src });
     }
     const { cfg, counts } = await loadAdminState(env);
     cfg.batches = cfg.batches || [];
@@ -266,12 +300,12 @@ async function handleAdmin(context, path) {
       const prev = counts || {};
       await putDoc(env, KV_COUNTS, { ...prev, counts: { ...imp.counts, ...(prev.counts || {}) } });
       const st = await loadAdminState(env);
-      return ok({ ...adminView(st.cfg, st.counts, now), email: auth.email, imported: imp.config.batches.length, mode: await getMode(env, 1) });
+      return ok({ ...av(env, st.cfg, st.counts, now), email: auth.email, imported: imp.config.batches.length, mode: await getMode(env, 1) });
     } else {
       return fail('不支援的操作', 404);
     }
     await putDoc(env, KV_CONFIG, stamp(cfg, auth.email));
-    return ok({ ...adminView(cfg, counts, now), email: auth.email, mode: await getMode(env, 1) });
+    return ok({ ...av(env, cfg, counts, now), email: auth.email, mode: await getMode(env, 1) });
   } catch (e) {
     return fail(e && e.message ? e.message : '儲存失敗');
   }
@@ -285,7 +319,7 @@ export async function onRequest(context) {
     if (request.method === 'POST' && path === '/api/sync') return await handleSync(context);
     if (request.method === 'GET' && path === '/api/batches') return (await handleBatchesNew(context)) || await handleBatches(context);
     if (request.method === 'POST' && path === '/api/submit') return (await handleSubmitNew(context)) || await handleSubmit(context);
-    if (request.method === 'GET' && (path === '/api' || path === '/api/ping')) return json(JSON.stringify({ ok: true, service: 'hcmccu-fast', kv: !!kv(context.env), signed: !!context.env.SYNC_SECRET, mode: await getMode(context.env), access: !!(context.env.ACCESS_AUD && context.env.ACCESS_TEAM_DOMAIN) }));
+    if (request.method === 'GET' && (path === '/api' || path === '/api/ping')) return json(JSON.stringify({ ok: true, service: 'hcmccu-fast', kv: !!kv(context.env), signed: !!context.env.SYNC_SECRET, turnstile: !!context.env.TURNSTILE_SECRET, mode: await getMode(context.env), access: !!(context.env.ACCESS_AUD && context.env.ACCESS_TEAM_DOMAIN) }));
   } catch (e) {
     return json(JSON.stringify({ ok: false, error: '加速層發生錯誤' }));
   }
